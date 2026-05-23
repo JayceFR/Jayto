@@ -13,6 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.jaycefr.jayto.ui.theme.JaytoTheme
 
+/*
+TODO
+`1. Permission and get all local songs.
+ 2. Try filtering for only songs and no audio files.
+ 3. Database?
+ 4. Player, MediaSession, MediaService.
+ 5. UI
+*/
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,12 +45,4 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
         text = "Hello $name!",
         modifier = modifier
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    JaytoTheme {
-        Greeting("Android")
-    }
 }
