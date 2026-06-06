@@ -47,6 +47,9 @@ class SongsViewModel @Inject constructor(
     private val _selectedSongForPlaylist = MutableStateFlow<Song?>(null)
     val selectedSongForPlaylist = _selectedSongForPlaylist.asStateFlow()
 
+    private val _artSearchState = MutableStateFlow<ArtSearchState>(ArtSearchState.Idle)
+    val artSearchState = _artSearchState.asStateFlow()
+
     val state = mediaControllerManager.state
 
     fun scanSongs() {
@@ -67,6 +70,26 @@ class SongsViewModel @Inject constructor(
         viewModelScope.launch {
             songRepository.toggleHidden(song.id, true)
         }
+    }
+
+    fun searchAlbumArt(song: Song) {
+        _artSearchState.value = ArtSearchState.Searching(song)
+        viewModelScope.launch {
+            val urls = songRepository.getArtUrls(song)
+            _artSearchState.value = ArtSearchState.Results(song, urls)
+        }
+    }
+
+    fun selectAlbumArt(songId: Long, imageUrl: String) {
+        _artSearchState.value = ArtSearchState.Downloading
+        viewModelScope.launch {
+            songRepository.downloadArt(songId, imageUrl)
+            _artSearchState.value = ArtSearchState.Idle
+        }
+    }
+
+    fun dismissArtSearch() {
+        _artSearchState.value = ArtSearchState.Idle
     }
 
     fun moveSong(fromIndex: Int, toIndex: Int) {
@@ -148,4 +171,11 @@ class SongsViewModel @Inject constructor(
             dismissAddToPlaylistDialog()
         }
     }
+}
+
+sealed class ArtSearchState {
+    object Idle : ArtSearchState()
+    data class Searching(val song: Song) : ArtSearchState()
+    data class Results(val song: Song, val urls: List<String>) : ArtSearchState()
+    object Downloading : ArtSearchState()
 }

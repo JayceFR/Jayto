@@ -18,5 +18,8 @@ interface SongRepository {
     suspend fun toggleFavorite(id: Long, isFavorite: Boolean)
     suspend fun toggleHidden(id: Long, isHidden: Boolean)
     suspend fun reorderSongs(songIds: List<Long>)
+    suspend fun getArtUrls(song: Song): List<String>
+    suspend fun downloadArt(songId: Long, imageUrl: String): String?
+    suspend fun searchAndDownloadArt(song: Song): Boolean
     suspend fun incrementPlayCount(id: Long)
 }

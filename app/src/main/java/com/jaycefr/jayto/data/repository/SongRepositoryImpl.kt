@@ -6,6 +6,7 @@ import android.provider.MediaStore
 import com.jaycefr.jayto.data.local.dao.SongDao
 import com.jaycefr.jayto.data.local.entities.SongEntity
 import com.jaycefr.jayto.data.local.entities.toDomain
+import com.jaycefr.jayto.data.remote.AlbumArtFetcher
 import com.jaycefr.jayto.domain.model.Song
 import com.jaycefr.jayto.domain.repository.SongRepository
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +17,8 @@ import javax.inject.Inject
 
 class SongRepositoryImpl @Inject constructor(
     private val context: Context,
-    private val songDao: SongDao
+    private val songDao: SongDao,
+    private val albumArtFetcher: AlbumArtFetcher
 ) : SongRepository {
 
     override fun getAllSongs(): Flow<List<Song>> =
@@ -54,6 +56,18 @@ class SongRepositoryImpl @Inject constructor(
 
     override suspend fun reorderSongs(songIds: List<Long>) {
         songDao.reorderSongs(songIds)
+    }
+
+    override suspend fun searchAndDownloadArt(song: Song): Boolean {
+        return albumArtFetcher.fetchAndSaveArt(song.id, song.title)
+    }
+
+    override suspend fun getArtUrls(song: Song): List<String> {
+        return albumArtFetcher.searchArtUrls(song.title)
+    }
+
+    override suspend fun downloadArt(songId: Long, imageUrl: String): String? {
+        return albumArtFetcher.downloadAndSaveArt(songId, imageUrl)
     }
 
     override suspend fun incrementPlayCount(id: Long) {

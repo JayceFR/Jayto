@@ -1,39 +1,35 @@
 package com.jaycefr.jayto.ui.screens
 
+import android.util.Log
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
-import androidx.compose.ui.Alignment
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.filled.*
+import coil.compose.AsyncImage
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
 import com.jaycefr.jayto.domain.model.Song
+import com.jaycefr.jayto.ui.viewmodel.ArtSearchState
 import com.jaycefr.jayto.ui.viewmodel.SongsViewModel
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -46,6 +42,7 @@ fun SongsScreen(
     val playlists by viewModel.playlists.collectAsState()
     val selectedSongs by viewModel.selectedSongs.collectAsState()
     val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsState()
+    val artSearchState by viewModel.artSearchState.collectAsState()
     
     val haptic = LocalHapticFeedback.current
 
@@ -108,6 +105,7 @@ fun SongsScreen(
                             },
                             onHide = { viewModel.hideSong(song) },
                             onAddToPlaylist = { viewModel.showAddToPlaylistDialog(song) },
+                            onSearchArt = { viewModel.searchAlbumArt(song) },
                             onLongClick = {
                                 if (!isMultiSelectMode) {
                                     viewModel.enterMultiSelectMode(song.id)
@@ -139,6 +137,12 @@ fun SongsScreen(
                 }
             )
         }
+
+        ArtSearchDialog(
+            state = artSearchState,
+            onDismiss = { viewModel.dismissArtSearch() },
+            onArtSelected = { songId, url -> viewModel.selectAlbumArt(songId, url) }
+        )
     }
 }
 
@@ -202,11 +206,79 @@ fun AddToPlaylistDialog(
 }
 
 @Composable
+fun ArtSearchDialog(
+    state: ArtSearchState,
+    onDismiss: () -> Unit,
+    onArtSelected: (Long, String) -> Unit
+) {
+    if (state is ArtSearchState.Idle) return
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Choose Album Art") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 200.dp, max = 400.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                when (state) {
+                    is ArtSearchState.Searching -> {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Searching for ${state.song.title}...")
+                    }
+                    is ArtSearchState.Results -> {
+                        if (state.urls.isEmpty()) {
+                            Text("No images found.")
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                contentPadding = PaddingValues(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(state.urls) { url ->
+                                    Card(
+                                        modifier = Modifier
+                                            .aspectRatio(1f)
+                                            .clickable { onArtSelected(state.song.id, url) }
+                                    ) {
+                                        AsyncImage(
+                                            model = url,
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    is ArtSearchState.Downloading -> {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Downloading artwork...")
+                    }
+                    else -> {}
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
+}
+
+@Composable
 fun SongItem(
     song: Song,
     onClick: () -> Unit,
     onHide: () -> Unit,
     onAddToPlaylist: (() -> Unit)? = null,
+    onSearchArt: (() -> Unit)? = null,
     onLongClick: () -> Unit = {},
     isSelected: Boolean = false,
     draggableModifier: Modifier = Modifier
@@ -221,10 +293,7 @@ fun SongItem(
                     detectTapGestures(
                         onTap = { onClick() },
                         onLongPress = { 
-                            if (isSelected) onLongClick() // Or context menu if already selected?
-                            // Actually, let's keep it simple: 
-                            // If NOT in multi-select, show menu. 
-                            // If IN multi-select, just toggle (handled by onClick).
+                            if (isSelected) onLongClick() 
                             showMenu = true 
                             onLongClick()
                         }
@@ -260,9 +329,20 @@ fun SongItem(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
         ) {
+            if (onSearchArt != null) {
+                DropdownMenuItem(
+                    text = { Text("Search for Album Art") },
+                    leadingIcon = { Icon(Icons.Default.ImageSearch, contentDescription = null) },
+                    onClick = { 
+                        showMenu = false
+                        onSearchArt()
+                    }
+                )
+            }
             if (onAddToPlaylist != null) {
                 DropdownMenuItem(
                     text = { Text("Add to Playlist") },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) },
                     onClick = { 
                         showMenu = false
                         onAddToPlaylist()
@@ -271,6 +351,7 @@ fun SongItem(
             }
             DropdownMenuItem(
                 text = { Text("Remove from Library") },
+                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                 onClick = {
                     showMenu = false
                     onHide()

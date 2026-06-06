@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.jaycefr.jayto.data.local.JaytoDatabase
 import com.jaycefr.jayto.data.local.dao.PlaylistDao
 import com.jaycefr.jayto.data.local.dao.SongDao
+import com.jaycefr.jayto.data.remote.AlbumArtFetcher
 import com.jaycefr.jayto.data.repository.PlaylistRepositoryImpl
 import com.jaycefr.jayto.data.repository.SongRepositoryImpl
 import com.jaycefr.jayto.domain.repository.PlaylistRepository
@@ -40,8 +41,9 @@ object DatabaseModule {
     @Singleton
     fun provideSongRepository(
         @ApplicationContext context: Context,
-        songDao: SongDao
-    ): SongRepository = SongRepositoryImpl(context, songDao)
+        songDao: SongDao,
+        albumArtFetcher: AlbumArtFetcher
+    ): SongRepository = SongRepositoryImpl(context, songDao, albumArtFetcher)
 
     @Provides
     @Singleton

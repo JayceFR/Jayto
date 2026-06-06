@@ -40,6 +40,9 @@ interface SongDao {
     @Query("UPDATE songs SET isHidden = :isHidden WHERE id = :id")
     suspend fun updateHidden(id: Long, isHidden: Boolean)
 
+    @Query("UPDATE songs SET artworkUri = :artworkUri WHERE id = :id")
+    suspend fun updateArtworkUri(id: Long, artworkUri: String)
+
     @Query("UPDATE songs SET playCount = playCount + 1, lastPlayed = :timestamp WHERE id = :id")
     suspend fun incrementPlayCount(id: Long, timestamp: Long)
 
