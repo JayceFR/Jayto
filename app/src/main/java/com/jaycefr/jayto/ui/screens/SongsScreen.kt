@@ -94,13 +94,7 @@ fun SongsScreen(
 
                     Surface(
                         shadowElevation = elevation,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .draggableHandle(
-                                onDragStarted = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                            ),
+                        modifier = Modifier.fillMaxWidth(),
                         color = backgroundColor
                     ) {
                         SongItem(
@@ -120,7 +114,12 @@ fun SongsScreen(
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 }
                             },
-                            isSelected = isSelected
+                            isSelected = isSelected,
+                            draggableModifier = Modifier.longPressDraggableHandle(
+                                onDragStarted = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                            )
                         )
                     }
                 }
@@ -209,7 +208,8 @@ fun SongItem(
     onHide: () -> Unit,
     onAddToPlaylist: (() -> Unit)? = null,
     onLongClick: () -> Unit = {},
-    isSelected: Boolean = false
+    isSelected: Boolean = false,
+    draggableModifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -238,13 +238,21 @@ fun SongItem(
                 contentDescription = null,
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(MaterialTheme.shapes.small),
+                    .clip(MaterialTheme.shapes.small)
+                    .then(draggableModifier),
                 contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(text = song.title, style = MaterialTheme.typography.titleMedium)
                 Text(text = song.artist, style = MaterialTheme.typography.bodyMedium)
+            }
+            if (isSelected) {
+                Checkbox(
+                    checked = true,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.padding(start = 8.dp)
+                )
             }
         }
 

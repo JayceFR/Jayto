@@ -14,7 +14,7 @@ import com.jaycefr.jayto.data.local.entities.SongEntity
         PlaylistEntity::class,
         PlaylistSongCrossRef::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class JaytoDatabase : RoomDatabase() {

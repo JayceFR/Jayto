@@ -22,10 +22,18 @@ class SongsViewModel @Inject constructor(
     val songs = songRepository.getAllSongs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _reorderedSongs = MutableStateFlow<List<Song>?>(null)
-    val displaySongs = combine(songs, _reorderedSongs) { original, reordered ->
-        if (reordered != null && reordered.size == original.size) reordered else original
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _displaySongs = MutableStateFlow<List<Song>>(emptyList())
+    val displaySongs = _displaySongs.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            songs.collect {
+                if (_displaySongs.value.isEmpty() || it.size != _displaySongs.value.size) {
+                    _displaySongs.value = it
+                }
+            }
+        }
+    }
 
     private val _selectedSongs = MutableStateFlow<Set<Long>>(emptySet())
     val selectedSongs = _selectedSongs.asStateFlow()
@@ -62,12 +70,12 @@ class SongsViewModel @Inject constructor(
     }
 
     fun moveSong(fromIndex: Int, toIndex: Int) {
-        val currentList = displaySongs.value.toMutableList()
+        val currentList = _displaySongs.value.toMutableList()
         if (fromIndex !in currentList.indices || toIndex !in currentList.indices) return
         
         val song = currentList.removeAt(fromIndex)
         currentList.add(toIndex, song)
-        _reorderedSongs.value = currentList
+        _displaySongs.value = currentList
 
         viewModelScope.launch {
             songRepository.reorderSongs(currentList.map { it.id })

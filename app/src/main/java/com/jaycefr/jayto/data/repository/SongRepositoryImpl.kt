@@ -61,7 +61,10 @@ class SongRepositoryImpl @Inject constructor(
     }
 
     override suspend fun scanLocalSongs() = withContext(Dispatchers.IO) {
-        val songs = mutableListOf<SongEntity>()
+        val currentSongsMap = songDao.getAllSongsList().associateBy { it.id }
+        var maxOrder = currentSongsMap.values.maxOfOrNull { it.customOrder } ?: -1
+        
+        val songsToInsert = mutableListOf<SongEntity>()
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
@@ -116,7 +119,14 @@ class SongRepositoryImpl @Inject constructor(
                     albumId
                 ).toString()
 
-                songs.add(
+                val existingSong = currentSongsMap[id]
+                val isHidden = existingSong?.isHidden ?: false
+                val isFavorite = existingSong?.isFavorite ?: false
+                val playCount = existingSong?.playCount ?: 0
+                val lastPlayed = existingSong?.lastPlayed
+                val customOrder = existingSong?.customOrder ?: ++maxOrder
+
+                songsToInsert.add(
                     SongEntity(
                         id = id,
                         title = title,
@@ -128,15 +138,20 @@ class SongRepositoryImpl @Inject constructor(
                         trackNumber = trackNumber % 1000,
                         discNumber = trackNumber / 1000,
                         dateAdded = dateAdded,
-                        dateModified = dateModified
+                        dateModified = dateModified,
+                        customOrder = customOrder,
+                        isHidden = isHidden,
+                        isFavorite = isFavorite,
+                        playCount = playCount,
+                        lastPlayed = lastPlayed
                     )
                 )
             }
         }
 
-        if (songs.isNotEmpty()) {
-            songDao.insertSongs(songs)
-            songDao.deleteSongsNotInList(songs.map { it.id })
+        if (songsToInsert.isNotEmpty()) {
+            songDao.insertSongs(songsToInsert)
+            songDao.deleteSongsNotInList(songsToInsert.map { it.id })
         }
     }
 }

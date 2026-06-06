@@ -9,6 +9,9 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE isHidden = 0 ORDER BY customOrder ASC")
     fun getAllSongs(): Flow<List<SongEntity>>
 
+    @Query("SELECT * FROM songs")
+    suspend fun getAllSongsList(): List<SongEntity>
+
     @Query("UPDATE songs SET customOrder = :newOrder WHERE id = :id")
     suspend fun updateSongOrder(id: Long, newOrder: Int)
 
