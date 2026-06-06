@@ -63,7 +63,8 @@ class SongRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getArtUrls(song: Song): List<String> {
-        return albumArtFetcher.searchArtUrls(song.title)
+        val query = if (song.artist.isBlank()) song.title else "recording:\"${song.title}\" AND artist:\"${song.artist}\""
+        return albumArtFetcher.searchArtUrls(query)
     }
 
     override suspend fun downloadArt(songId: Long, imageUrl: String): String? {

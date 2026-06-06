@@ -102,4 +102,15 @@ class MediaControllerManager @Inject constructor(
             it.play()
         }
     }
+
+    fun updateMediaItemMetadata(updatedItem: MediaItem) {
+        controller?.let { player ->
+            for (i in 0 until player.mediaItemCount) {
+                if (player.getMediaItemAt(i).mediaId == updatedItem.mediaId) {
+                    player.replaceMediaItem(i, updatedItem)
+                    break
+                }
+            }
+        }
+    }
 }

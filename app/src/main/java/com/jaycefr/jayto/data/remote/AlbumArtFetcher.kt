@@ -29,8 +29,8 @@ class AlbumArtFetcher @Inject constructor(
         
         // Strategy 1: MusicBrainz + Cover Art Archive
         try {
-            Log.d("JAYTO_SEARCH", "Original Song Title: $query")
-            val musicBrainzUrl = "https://musicbrainz.org/ws/2/recording/?query=recording:\"${Uri.encode(query)}\"&fmt=json"
+            Log.d("JAYTO_SEARCH", "Search Query: $query")
+            val musicBrainzUrl = "https://musicbrainz.org/ws/2/recording/?query=${Uri.encode(query)}&fmt=json"
             Log.d("JAYTO_SEARCH", "MusicBrainz Query URL: $musicBrainzUrl")
 
             val request = Request.Builder()

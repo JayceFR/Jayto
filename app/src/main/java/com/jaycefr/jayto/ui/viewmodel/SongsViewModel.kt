@@ -73,9 +73,16 @@ class SongsViewModel @Inject constructor(
     }
 
     fun searchAlbumArt(song: Song) {
+        _artSearchState.value = ArtSearchState.InputQuery(song)
+    }
+
+    fun performArtSearch(song: Song, title: String, artist: String) {
         _artSearchState.value = ArtSearchState.Searching(song)
         viewModelScope.launch {
-            val urls = songRepository.getArtUrls(song)
+            val query = if (artist.isBlank()) title else "recording:\"$title\" AND artist:\"$artist\""
+            // We pass the refined query to the fetcher. 
+            // Note: AlbumArtFetcher needs to handle this new query format for MusicBrainz
+            val urls = songRepository.getArtUrls(song.copy(title = title, artist = artist))
             _artSearchState.value = ArtSearchState.Results(song, urls)
         }
     }
@@ -83,7 +90,14 @@ class SongsViewModel @Inject constructor(
     fun selectAlbumArt(songId: Long, imageUrl: String) {
         _artSearchState.value = ArtSearchState.Downloading
         viewModelScope.launch {
-            songRepository.downloadArt(songId, imageUrl)
+            val newUri = songRepository.downloadArt(songId, imageUrl)
+            if (newUri != null) {
+                // Find the song in current list and update its MediaItem if it's being played
+                val updatedSong = songRepository.getSongById(songId)
+                updatedSong?.let {
+                    mediaControllerManager.updateMediaItemMetadata(it.toMediaItem())
+                }
+            }
             _artSearchState.value = ArtSearchState.Idle
         }
     }
@@ -175,6 +189,7 @@ class SongsViewModel @Inject constructor(
 
 sealed class ArtSearchState {
     object Idle : ArtSearchState()
+    data class InputQuery(val song: Song) : ArtSearchState()
     data class Searching(val song: Song) : ArtSearchState()
     data class Results(val song: Song, val urls: List<String>) : ArtSearchState()
     object Downloading : ArtSearchState()

@@ -141,7 +141,8 @@ fun SongsScreen(
         ArtSearchDialog(
             state = artSearchState,
             onDismiss = { viewModel.dismissArtSearch() },
-            onArtSelected = { songId, url -> viewModel.selectAlbumArt(songId, url) }
+            onArtSelected = { songId, url -> viewModel.selectAlbumArt(songId, url) },
+            onPerformSearch = { song, title, artist -> viewModel.performArtSearch(song, title, artist) }
         )
     }
 }
@@ -209,30 +210,64 @@ fun AddToPlaylistDialog(
 fun ArtSearchDialog(
     state: ArtSearchState,
     onDismiss: () -> Unit,
-    onArtSelected: (Long, String) -> Unit
+    onArtSelected: (Long, String) -> Unit,
+    onPerformSearch: (Song, String, String) -> Unit
 ) {
     if (state is ArtSearchState.Idle) return
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose Album Art") },
+        title = { 
+            Text(if (state is ArtSearchState.InputQuery) "Search Album Art" else "Choose Album Art") 
+        },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 200.dp, max = 400.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Top
             ) {
                 when (state) {
+                    is ArtSearchState.InputQuery -> {
+                        var title by remember { mutableStateOf(state.song.title) }
+                        var artist by remember { mutableStateOf(state.song.artist) }
+                        
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = title,
+                                onValueChange = { title = it },
+                                label = { Text("Song Title") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = artist,
+                                onValueChange = { artist = it },
+                                label = { Text("Artist") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Button(
+                                onClick = { onPerformSearch(state.song, title, artist) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Search")
+                            }
+                        }
+                    }
                     is ArtSearchState.Searching -> {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Searching for ${state.song.title}...")
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator()
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text("Searching for ${state.song.title}...")
+                            }
+                        }
                     }
                     is ArtSearchState.Results -> {
                         if (state.urls.isEmpty()) {
-                            Text("No images found.")
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No images found.")
+                            }
                         } else {
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(2),
@@ -258,9 +293,13 @@ fun ArtSearchDialog(
                         }
                     }
                     is ArtSearchState.Downloading -> {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Downloading artwork...")
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator()
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text("Downloading artwork...")
+                            }
+                        }
                     }
                     else -> {}
                 }
