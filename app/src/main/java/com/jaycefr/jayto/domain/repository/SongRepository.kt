@@ -16,5 +16,7 @@ interface SongRepository {
     suspend fun getSongById(id: Long): Song?
     suspend fun scanLocalSongs()
     suspend fun toggleFavorite(id: Long, isFavorite: Boolean)
+    suspend fun toggleHidden(id: Long, isHidden: Boolean)
+    suspend fun reorderSongs(songIds: List<Long>)
     suspend fun incrementPlayCount(id: Long)
 }

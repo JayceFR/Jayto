@@ -14,5 +14,7 @@ data class Song(
     val dateModified: Long,
     val playCount: Int,
     val lastPlayed: Long?,
-    val isFavorite: Boolean
+    val isFavorite: Boolean,
+    val isHidden: Boolean,
+    val customOrder: Int
 )

@@ -45,15 +45,31 @@ class PlaybackManager @Inject constructor(
     }
 
     fun playSong(mediaItem: MediaItem) {
+        if (!verifyFileExists(mediaItem)) return
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
         exoPlayer.play()
     }
 
     fun playSongs(mediaItems: List<MediaItem>, startIndex: Int = 0) {
-        exoPlayer.setMediaItems(mediaItems, startIndex, 0L)
+        val validItems = mediaItems.filter { verifyFileExists(it) }
+        if (validItems.isEmpty()) return
+        
+        val adjustedIndex = if (startIndex < mediaItems.size) {
+            val targetUri = mediaItems[startIndex].localConfiguration?.uri
+            validItems.indexOfFirst { it.localConfiguration?.uri == targetUri }.coerceAtLeast(0)
+        } else 0
+
+        exoPlayer.setMediaItems(validItems, adjustedIndex, 0L)
         exoPlayer.prepare()
         exoPlayer.play()
+    }
+
+    private fun verifyFileExists(mediaItem: MediaItem): Boolean {
+        val uri = mediaItem.localConfiguration?.uri ?: return false
+        return if (uri.scheme == "file" || uri.scheme == null) {
+            java.io.File(uri.path ?: "").exists()
+        } else true // Assume content URIs are handled by ExoPlayer's error listener
     }
 
     fun release() {

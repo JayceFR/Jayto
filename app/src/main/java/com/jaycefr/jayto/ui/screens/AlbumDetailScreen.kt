@@ -27,7 +27,11 @@ fun AlbumDetailScreen(
             contentPadding = PaddingValues(16.dp)
         ) {
             items(songs) { song ->
-                SongItem(song = song, onClick = { viewModel.playSong(song) })
+                SongItem(
+                    song = song,
+                    onClick = { viewModel.playSong(song) },
+                    onHide = { viewModel.hideSong(song) }
+                )
             }
         }
     }

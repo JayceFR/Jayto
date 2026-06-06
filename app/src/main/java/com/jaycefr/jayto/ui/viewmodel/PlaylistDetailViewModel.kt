@@ -40,4 +40,21 @@ class PlaylistDetailViewModel @Inject constructor(
             mediaControllerManager.playMediaItems(_songs.value.map { it.toMediaItem() }, index)
         }
     }
+
+    fun moveSong(fromIndex: Int, toIndex: Int) {
+        val currentList = _songs.value.toMutableList()
+        val song = currentList.removeAt(fromIndex)
+        currentList.add(toIndex, song)
+        _songs.value = currentList
+        
+        viewModelScope.launch {
+            playlistRepository.reorderPlaylist(playlistId, currentList.map { it.id })
+        }
+    }
+
+    fun hideSong(song: Song) {
+        viewModelScope.launch {
+            playlistRepository.removeSongFromPlaylist(playlistId, song.id)
+        }
+    }
 }

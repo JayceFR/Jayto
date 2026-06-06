@@ -40,4 +40,8 @@ class PlaylistRepositoryImpl @Inject constructor(
     override suspend fun removeSongFromPlaylist(playlistId: Long, songId: Long) {
         playlistDao.removeSongFromPlaylist(PlaylistSongCrossRef(playlistId, songId, 0))
     }
+
+    override suspend fun reorderPlaylist(playlistId: Long, songIds: List<Long>) {
+        playlistDao.reorderPlaylist(playlistId, songIds)
+    }
 }

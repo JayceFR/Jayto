@@ -10,7 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.jaycefr.jayto.domain.model.Song
 import com.jaycefr.jayto.ui.viewmodel.HomeViewModel
 import com.jaycefr.jayto.ui.viewmodel.SongsViewModel
@@ -38,9 +41,12 @@ fun HomeScreen(
             if (recentlyPlayed.isNotEmpty()) {
                 item { Text("Recently Played", style = MaterialTheme.typography.titleLarge) }
                 item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(recentlyPlayed) { song ->
-                            SongCard(song = song, onClick = { songsViewModel.playSong(song) })
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        items(recentlyPlayed.withIndex().toList()) { (index, song) ->
+                            SongCard(song = song, onClick = { songsViewModel.playSongs(recentlyPlayed, index) })
                         }
                     }
                 }
@@ -50,9 +56,12 @@ fun HomeScreen(
                 item { Spacer(modifier = Modifier.height(16.dp)) }
                 item { Text("Favorites", style = MaterialTheme.typography.titleLarge) }
                 item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(favorites) { song ->
-                            SongCard(song = song, onClick = { songsViewModel.playSong(song) })
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        items(favorites.withIndex().toList()) { (index, song) ->
+                            SongCard(song = song, onClick = { songsViewModel.playSongs(favorites, index) })
                         }
                     }
                 }
@@ -76,14 +85,15 @@ fun SongCard(song: Song, onClick: () -> Unit) {
             .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
-            Box(
+            AsyncImage(
+                model = song.artworkUri,
+                contentDescription = null,
                 modifier = Modifier
                     .size(134.dp)
-                    .padding(bottom = 8.dp)
-            ) {
-                // Placeholder for artwork
-                Surface(color = MaterialTheme.colorScheme.primaryContainer) {}
-            }
+                    .clip(MaterialTheme.shapes.medium),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             Text(text = song.title, maxLines = 1, style = MaterialTheme.typography.titleSmall)
             Text(text = song.artist, maxLines = 1, style = MaterialTheme.typography.bodySmall)
         }

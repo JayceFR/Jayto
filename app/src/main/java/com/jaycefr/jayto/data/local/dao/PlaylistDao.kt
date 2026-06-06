@@ -36,4 +36,14 @@ interface PlaylistDao {
 
     @Query("SELECT MAX(position) FROM playlist_song_cross_ref WHERE playlistId = :playlistId")
     suspend fun getMaxPosition(playlistId: Long): Int?
+
+    @Query("UPDATE playlist_song_cross_ref SET position = :newPosition WHERE playlistId = :playlistId AND songId = :songId")
+    suspend fun updateSongPosition(playlistId: Long, songId: Long, newPosition: Int)
+
+    @Transaction
+    suspend fun reorderPlaylist(playlistId: Long, songIds: List<Long>) {
+        songIds.forEachIndexed { index, songId ->
+            updateSongPosition(playlistId, songId, index)
+        }
+    }
 }

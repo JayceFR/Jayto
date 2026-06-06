@@ -10,5 +10,7 @@ data class PlaybackState(
     val currentPosition: Long = 0L,
     val duration: Long = 0L,
     val shuffleModeEnabled: Boolean = false,
-    val repeatMode: Int = Player.REPEAT_MODE_OFF
+    val repeatMode: Int = Player.REPEAT_MODE_OFF,
+    val hasNext: Boolean = false,
+    val hasPrevious: Boolean = false
 )

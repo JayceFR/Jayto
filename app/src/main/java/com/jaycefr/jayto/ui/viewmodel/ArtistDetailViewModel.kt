@@ -39,4 +39,10 @@ class ArtistDetailViewModel @Inject constructor(
             mediaControllerManager.playMediaItems(_songs.value.map { it.toMediaItem() }, index)
         }
     }
+
+    fun hideSong(song: Song) {
+        viewModelScope.launch {
+            songRepository.toggleHidden(song.id, true)
+        }
+    }
 }

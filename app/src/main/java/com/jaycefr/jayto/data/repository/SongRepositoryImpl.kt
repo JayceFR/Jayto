@@ -48,6 +48,14 @@ class SongRepositoryImpl @Inject constructor(
         songDao.updateFavorite(id, isFavorite)
     }
 
+    override suspend fun toggleHidden(id: Long, isHidden: Boolean) {
+        songDao.updateHidden(id, isHidden)
+    }
+
+    override suspend fun reorderSongs(songIds: List<Long>) {
+        songDao.reorderSongs(songIds)
+    }
+
     override suspend fun incrementPlayCount(id: Long) {
         songDao.incrementPlayCount(id, System.currentTimeMillis())
     }
@@ -89,11 +97,15 @@ class SongRepositoryImpl @Inject constructor(
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
+                val fileUri = cursor.getString(dataColumn)
+                
+                // Skip if file doesn't exist
+                if (!java.io.File(fileUri).exists()) continue
+
                 val title = cursor.getString(titleColumn)
                 val artist = cursor.getString(artistColumn) ?: "<Unknown>"
                 val album = cursor.getString(albumColumn) ?: "<Unknown>"
                 val duration = cursor.getLong(durationColumn)
-                val fileUri = cursor.getString(dataColumn)
                 val albumId = cursor.getLong(albumIdColumn)
                 val trackNumber = cursor.getInt(trackColumn)
                 val dateAdded = cursor.getLong(dateAddedColumn)

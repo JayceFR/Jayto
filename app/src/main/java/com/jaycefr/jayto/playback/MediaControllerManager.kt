@@ -60,7 +60,9 @@ class MediaControllerManager @Inject constructor(
                     playbackState = player.playbackState,
                     duration = player.duration.coerceAtLeast(0L),
                     shuffleModeEnabled = player.shuffleModeEnabled,
-                    repeatMode = player.repeatMode
+                    repeatMode = player.repeatMode,
+                    hasNext = player.hasNextMediaItem(),
+                    hasPrevious = player.hasPreviousMediaItem()
                 )
             }
         }

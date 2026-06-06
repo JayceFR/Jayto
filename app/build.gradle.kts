@@ -71,6 +71,7 @@ dependencies {
     // Navigation and Image Loading
     implementation(libs.navigation.compose)
     implementation(libs.coil.compose)
+    implementation(libs.reorderable)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

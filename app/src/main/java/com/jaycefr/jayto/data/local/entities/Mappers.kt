@@ -16,7 +16,9 @@ fun SongEntity.toDomain() = Song(
     dateModified = dateModified,
     playCount = playCount,
     lastPlayed = lastPlayed,
-    isFavorite = isFavorite
+    isFavorite = isFavorite,
+    isHidden = isHidden,
+    customOrder = customOrder
 )
 
 fun Song.toEntity() = SongEntity(
@@ -33,5 +35,7 @@ fun Song.toEntity() = SongEntity(
     dateModified = dateModified,
     playCount = playCount,
     lastPlayed = lastPlayed,
-    isFavorite = isFavorite
+    isFavorite = isFavorite,
+    isHidden = isHidden,
+    customOrder = customOrder
 )

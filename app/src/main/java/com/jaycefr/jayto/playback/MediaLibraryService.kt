@@ -2,9 +2,13 @@ package com.jaycefr.jayto.playback
 
 import android.os.Bundle
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
@@ -32,6 +36,21 @@ class MediaLibraryService : MediaLibraryService() {
         }
         
         // TODO: Implement onGetChildren for browsing
+
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult {
+            val connectionResult = super.onConnect(session, controller)
+            val availableSessionCommands = connectionResult.availableSessionCommands.buildUpon()
+                // Add any custom session commands here if needed
+                .build()
+            
+            return MediaSession.ConnectionResult.accept(
+                availableSessionCommands,
+                connectionResult.availablePlayerCommands
+            )
+        }
     }
 
     override fun onCreate() {
