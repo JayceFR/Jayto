@@ -46,21 +46,18 @@ fun PlaylistDetailScreen(
                     
                     Surface(
                         shadowElevation = elevation,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .draggableHandle(),
+                        color = if (isDragging) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(
-                                modifier = Modifier.draggableHandle(),
-                                onClick = {}
-                            ) {
-                                Icon(Icons.Default.DragHandle, contentDescription = "Reorder")
-                            }
-                            
                             Box(modifier = Modifier.weight(1.0f)) {
                                 SongItem(
                                     song = song,
                                     onClick = { viewModel.playSong(song) },
-                                    onHide = { viewModel.hideSong(song) }
+                                    onHide = { viewModel.hideSong(song) },
+                                    onLongClick = {} // Add required parameter
                                 )
                             }
                         }

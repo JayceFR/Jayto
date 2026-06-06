@@ -20,8 +20,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.material.icons.automirrored.filled.*
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.animation.core.animateDpAsState
@@ -39,10 +44,15 @@ fun SongsScreen(
     val songs by viewModel.displaySongs.collectAsState()
     val selectedSongForPlaylist by viewModel.selectedSongForPlaylist.collectAsState()
     val playlists by viewModel.playlists.collectAsState()
+    val selectedSongs by viewModel.selectedSongs.collectAsState()
+    val isMultiSelectMode by viewModel.isMultiSelectMode.collectAsState()
+    
+    val haptic = LocalHapticFeedback.current
 
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
         viewModel.moveSong(from.index, to.index)
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
     LaunchedEffect(Unit) {
@@ -51,7 +61,16 @@ fun SongsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Songs") })
+            if (isMultiSelectMode) {
+                MultiSelectTopBar(
+                    selectedCount = selectedSongs.size,
+                    onClose = { viewModel.exitMultiSelectMode() },
+                    onAddToPlaylist = { viewModel.showMultiSelectAddToPlaylist() },
+                    onRemove = { viewModel.hideSelectedSongs() }
+                )
+            } else {
+                TopAppBar(title = { Text("Songs") })
+            }
         }
     ) { padding ->
         LazyColumn(
@@ -59,21 +78,49 @@ fun SongsScreen(
             modifier = Modifier.padding(padding),
             contentPadding = PaddingValues(16.dp)
         ) {
-            items(songs.withIndex().toList(), key = { it.value.id }) { (index, song) ->
+            items(songs, key = { it.id }) { song ->
+                val isSelected = selectedSongs.contains(song.id)
+                val index = songs.indexOf(song)
+                
                 ReorderableItem(reorderableState, key = song.id) { isDragging ->
                     val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp)
+                    val backgroundColor = if (isDragging) {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    } else if (isSelected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    }
 
                     Surface(
                         shadowElevation = elevation,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .draggableHandle(
+                                onDragStarted = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                            ),
+                        color = backgroundColor
                     ) {
                         SongItem(
                             song = song,
-                            onClick = { viewModel.playSongs(songs, index) },
+                            onClick = { 
+                                if (isMultiSelectMode) {
+                                    viewModel.toggleSelection(song.id)
+                                } else {
+                                    viewModel.playSongs(songs, index)
+                                }
+                            },
                             onHide = { viewModel.hideSong(song) },
                             onAddToPlaylist = { viewModel.showAddToPlaylistDialog(song) },
-                            isReorderable = true,
-                            draggableModifier = Modifier.draggableHandle()
+                            onLongClick = {
+                                if (!isMultiSelectMode) {
+                                    viewModel.enterMultiSelectMode(song.id)
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                            },
+                            isSelected = isSelected
                         )
                     }
                 }
@@ -84,10 +131,42 @@ fun SongsScreen(
             AddToPlaylistDialog(
                 playlists = playlists,
                 onDismiss = { viewModel.dismissAddToPlaylistDialog() },
-                onPlaylistSelected = { viewModel.addSongToPlaylist(it) }
+                onPlaylistSelected = { 
+                    if (isMultiSelectMode) {
+                        viewModel.addSelectedToPlaylist(it)
+                    } else {
+                        viewModel.addSongToPlaylist(it)
+                    }
+                }
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MultiSelectTopBar(
+    selectedCount: Int,
+    onClose: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onRemove: () -> Unit
+) {
+    TopAppBar(
+        title = { Text("$selectedCount Selected") },
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Default.Close, contentDescription = "Close")
+            }
+        },
+        actions = {
+            IconButton(onClick = onAddToPlaylist) {
+                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to Playlist")
+            }
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Default.Delete, contentDescription = "Remove")
+            }
+        }
+    )
 }
 
 @Composable
@@ -129,8 +208,8 @@ fun SongItem(
     onClick: () -> Unit,
     onHide: () -> Unit,
     onAddToPlaylist: (() -> Unit)? = null,
-    isReorderable: Boolean = false,
-    draggableModifier: Modifier = Modifier
+    onLongClick: () -> Unit = {},
+    isSelected: Boolean = false
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -141,21 +220,19 @@ fun SongItem(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { onClick() },
-                        onLongPress = { showMenu = true }
+                        onLongPress = { 
+                            if (isSelected) onLongClick() // Or context menu if already selected?
+                            // Actually, let's keep it simple: 
+                            // If NOT in multi-select, show menu. 
+                            // If IN multi-select, just toggle (handled by onClick).
+                            showMenu = true 
+                            onLongClick()
+                        }
                     )
                 }
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isReorderable) {
-                IconButton(
-                    modifier = draggableModifier,
-                    onClick = {}
-                ) {
-                    Icon(Icons.Default.DragHandle, contentDescription = "Reorder")
-                }
-            }
-
             AsyncImage(
                 model = song.artworkUri,
                 contentDescription = null,

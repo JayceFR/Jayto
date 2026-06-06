@@ -30,7 +30,8 @@ fun AlbumDetailScreen(
                 SongItem(
                     song = song,
                     onClick = { viewModel.playSong(song) },
-                    onHide = { viewModel.hideSong(song) }
+                    onHide = { viewModel.hideSong(song) },
+                    onLongClick = {} // Add required parameter
                 )
             }
         }
