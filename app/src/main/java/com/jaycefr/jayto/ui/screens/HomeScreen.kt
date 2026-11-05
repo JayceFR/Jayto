@@ -68,9 +68,14 @@ fun HomeScreen(
 
     val haptic = LocalHapticFeedback.current
     val lazyListState = rememberLazyListState()
+    val headerOffset = if (selectedCategory == MainCategory.SONGS && recentlyPlayed.isNotEmpty()) 1 else 0
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        songsViewModel.moveSong(from.index, to.index)
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        val fromIndex = from.index - headerOffset
+        val toIndex = to.index - headerOffset
+        if (fromIndex in songs.indices && toIndex in songs.indices) {
+            songsViewModel.moveSong(fromIndex, toIndex)
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
     }
 
     LaunchedEffect(Unit) {

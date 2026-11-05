@@ -43,10 +43,8 @@ class SongsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            songs.collect {
-                if (_displaySongs.value.isEmpty() || it.size != _displaySongs.value.size) {
-                    _displaySongs.value = it
-                }
+            songs.collect { list ->
+                _displaySongs.value = list
             }
         }
     }
