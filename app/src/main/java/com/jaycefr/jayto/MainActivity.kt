@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
 import com.jaycefr.jayto.playback.MediaControllerManager
 import com.jaycefr.jayto.ui.screens.MainScreen
@@ -26,6 +27,7 @@ class MainActivity : ComponentActivity() {
     lateinit var mediaControllerManager: MediaControllerManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {

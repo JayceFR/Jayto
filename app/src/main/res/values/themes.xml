@@ -2,4 +2,10 @@
 <resources>
 
     <style name="Theme.Jayto" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Jayto.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#000000</item>
+        <item name="postSplashScreenTheme">@style/Theme.Jayto</item>
+    </style>
+
 </resources>
