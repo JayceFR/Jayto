@@ -37,6 +37,9 @@ fun ArtistsScreen(
 @Composable
 fun ArtistItem(artist: String, onClick: () -> Unit) {
     Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)

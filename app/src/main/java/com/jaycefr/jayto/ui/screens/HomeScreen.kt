@@ -153,7 +153,13 @@ fun HomeScreen(
                     FilterChip(
                         selected = selectedCategory == category,
                         onClick = { songsViewModel.selectCategory(category) },
-                        label = { Text(category.displayName) }
+                        label = { Text(category.displayName) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                     )
                 }
             }
@@ -311,6 +317,9 @@ fun HomeScreen(
 fun SongCard(song: Song, onClick: () -> Unit) {
     val defaultArt = androidx.compose.ui.res.painterResource(id = com.jaycefr.jayto.R.drawable.ic_default_artwork)
     Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
         modifier = Modifier
             .width(150.dp)
             .clickable(onClick = onClick)

@@ -69,6 +69,9 @@ fun PlaylistsScreen(
 @Composable
 fun PlaylistItem(playlist: Playlist, onClick: () -> Unit) {
     Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
