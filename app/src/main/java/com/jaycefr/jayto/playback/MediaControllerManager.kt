@@ -12,6 +12,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class MediaControllerManager @Inject constructor(
@@ -47,6 +48,7 @@ class MediaControllerManager @Inject constructor(
                 override fun onIsPlayingChanged(playing: Boolean) { updateState() }
                 override fun onShuffleModeEnabledChanged(enabled: Boolean) { updateState() }
                 override fun onRepeatModeChanged(mode: Int) { updateState() }
+
             })
         }
     }
@@ -76,7 +78,7 @@ class MediaControllerManager @Inject constructor(
                         _state.update { it.copy(currentPosition = player.currentPosition) }
                     }
                 }
-                delay(1000)
+                delay(1000.milliseconds)
             }
         }
     }

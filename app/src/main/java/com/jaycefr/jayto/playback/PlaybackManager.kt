@@ -20,7 +20,9 @@ class PlaybackManager @Inject constructor(
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     
-    val exoPlayer: ExoPlayer = ExoPlayer.Builder(context).build().apply {
+    val exoPlayer: ExoPlayer = ExoPlayer.Builder(context)
+        .setHandleAudioBecomingNoisy(true)
+        .build().apply {
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)

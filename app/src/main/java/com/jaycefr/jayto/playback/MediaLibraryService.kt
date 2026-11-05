@@ -1,5 +1,7 @@
 package com.jaycefr.jayto.playback
 
+import android.app.PendingIntent
+import android.content.Intent
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -11,6 +13,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.jaycefr.jayto.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -53,9 +56,28 @@ class MediaLibraryService : MediaLibraryService() {
         }
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        /* User swiped the app away from the recently used list. Completely closed the app */
+        super.onTaskRemoved(rootIntent)
+        val player = session?.player ?: return
+        player.stop()
+        player.clearMediaItems()
+        stopSelf()
+    }
+
     override fun onCreate() {
         super.onCreate()
-        session = MediaLibrarySession.Builder(this, playbackManager.exoPlayer, callback).build()
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        session = MediaLibrarySession.Builder(this, playbackManager.exoPlayer, callback)
+            .setSessionActivity(pendingIntent)
+            .build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
