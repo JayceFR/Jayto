@@ -1,5 +1,12 @@
 package com.jaycefr.jayto.ui.screens
 
+import android.net.Uri
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -17,10 +24,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
 import com.jaycefr.jayto.domain.model.Song
 import com.jaycefr.jayto.ui.viewmodel.ArtSearchState
@@ -221,17 +232,22 @@ fun SongItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val defaultArt = androidx.compose.ui.res.painterResource(id = com.jaycefr.jayto.R.drawable.ic_default_artwork)
-            AsyncImage(
-                model = song.artworkUri ?: com.jaycefr.jayto.R.drawable.ic_default_artwork,
-                placeholder = defaultArt,
-                error = defaultArt,
-                fallback = defaultArt,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .then(draggableModifier),
-                contentScale = ContentScale.Crop
+//            AsyncImage(
+//                model = song.artworkUri ?: com.jaycefr.jayto.R.drawable.ic_default_artwork,
+//                placeholder = defaultArt,
+//                error = defaultArt,
+//                fallback = defaultArt,
+//                contentDescription = null,
+//                modifier = Modifier
+//                    .size(48.dp)
+//                    .clip(MaterialTheme.shapes.small)
+//                    .then(draggableModifier),
+//                contentScale = ContentScale.Crop
+//            )
+            RotatingArtwork(
+                artworkUri = song.artworkUri,
+                isPlaying = currentPlayingSong,
+                modifier = draggableModifier
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -304,4 +320,48 @@ fun SongItem(
             )
         }
     }
+}
+
+@Composable
+fun RotatingArtwork(
+    artworkUri: String?,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp
+) {
+    val defaultArt = painterResource(
+        id = com.jaycefr.jayto.R.drawable.ic_default_artwork
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(
+        label = "record_rotation"
+    )
+
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 8000,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    AsyncImage(
+        model = artworkUri ?: com.jaycefr.jayto.R.drawable.ic_default_artwork,
+        placeholder = defaultArt,
+        error = defaultArt,
+        fallback = defaultArt,
+        contentDescription = "Album artwork",
+        contentScale = ContentScale.Crop,
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .graphicsLayer {
+                rotationZ = if (isPlaying) rotation else 0f
+            }
+    )
 }
