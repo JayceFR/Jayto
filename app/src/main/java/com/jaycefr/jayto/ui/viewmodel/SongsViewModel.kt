@@ -22,6 +22,22 @@ class SongsViewModel @Inject constructor(
     val songs = songRepository.getAllSongs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val recentlyPlayed = songRepository.getRecentlyPlayed()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val albums = songRepository.getAllAlbums()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val artists = songRepository.getAllArtists()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _selectedCategory = MutableStateFlow(MainCategory.SONGS)
+    val selectedCategory = _selectedCategory.asStateFlow()
+
+    fun selectCategory(category: MainCategory) {
+        _selectedCategory.value = category
+    }
+
     private val _displaySongs = MutableStateFlow<List<Song>>(emptyList())
     val displaySongs = _displaySongs.asStateFlow()
 
@@ -193,4 +209,11 @@ sealed class ArtSearchState {
     data class Searching(val song: Song) : ArtSearchState()
     data class Results(val song: Song, val urls: List<String>) : ArtSearchState()
     object Downloading : ArtSearchState()
+}
+
+enum class MainCategory(val displayName: String) {
+    SONGS("Songs"),
+    PLAYLISTS("Playlists"),
+    ARTISTS("Artists"),
+    ALBUMS("Albums")
 }

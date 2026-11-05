@@ -1,79 +1,292 @@
 package com.jaycefr.jayto.ui.screens
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.jaycefr.jayto.domain.model.Song
-import com.jaycefr.jayto.ui.viewmodel.HomeViewModel
+import com.jaycefr.jayto.domain.repository.Playlist
+import com.jaycefr.jayto.ui.viewmodel.AlbumsViewModel
+import com.jaycefr.jayto.ui.viewmodel.ArtSearchState
+import com.jaycefr.jayto.ui.viewmodel.ArtistsViewModel
+import com.jaycefr.jayto.ui.viewmodel.MainCategory
+import com.jaycefr.jayto.ui.viewmodel.PlaylistsViewModel
 import com.jaycefr.jayto.ui.viewmodel.SongsViewModel
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel,
     songsViewModel: SongsViewModel,
-    onNavigateToSongs: () -> Unit,
-    onNavigateToAlbums: () -> Unit,
-    onNavigateToArtists: () -> Unit,
-    onNavigateToPlaylists: () -> Unit
+    playlistsViewModel: PlaylistsViewModel,
+    albumsViewModel: AlbumsViewModel,
+    artistsViewModel: ArtistsViewModel,
+    onAlbumClick: (String) -> Unit,
+    onArtistClick: (String) -> Unit,
+    onPlaylistClick: (Playlist) -> Unit
 ) {
-    val recentlyPlayed by viewModel.recentlyPlayed.collectAsState()
-    val favorites by viewModel.favorites.collectAsState()
+    val songs by songsViewModel.displaySongs.collectAsState()
+    val recentlyPlayed by songsViewModel.recentlyPlayed.collectAsState()
+    val selectedCategory by songsViewModel.selectedCategory.collectAsState()
+    val selectedSongForPlaylist by songsViewModel.selectedSongForPlaylist.collectAsState()
+    val playlists by songsViewModel.playlists.collectAsState()
+    val selectedSongs by songsViewModel.selectedSongs.collectAsState()
+    val isMultiSelectMode by songsViewModel.isMultiSelectMode.collectAsState()
+    val artSearchState by songsViewModel.artSearchState.collectAsState()
+
+    val albums by albumsViewModel.albums.collectAsState()
+    val artists by artistsViewModel.artists.collectAsState()
+    val playlistList by playlistsViewModel.playlists.collectAsState()
+
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+    var newPlaylistName by remember { mutableStateOf("") }
+
+    val haptic = LocalHapticFeedback.current
+    val lazyListState = rememberLazyListState()
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        songsViewModel.moveSong(from.index, to.index)
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    LaunchedEffect(Unit) {
+        songsViewModel.scanSongs()
+    }
+
+    if (showCreatePlaylistDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreatePlaylistDialog = false },
+            title = { Text("New Playlist") },
+            text = {
+                OutlinedTextField(
+                    value = newPlaylistName,
+                    onValueChange = { newPlaylistName = it },
+                    label = { Text("Playlist Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (newPlaylistName.isNotBlank()) {
+                        playlistsViewModel.createPlaylist(newPlaylistName)
+                        showCreatePlaylistDialog = false
+                        newPlaylistName = ""
+                    }
+                }) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreatePlaylistDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Jayto Music") }) }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier.padding(padding),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            if (recentlyPlayed.isNotEmpty()) {
-                item { Text("Recently Played", style = MaterialTheme.typography.titleLarge) }
-                item {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        items(recentlyPlayed.withIndex().toList()) { (index, song) ->
-                            SongCard(song = song, onClick = { songsViewModel.playSongs(recentlyPlayed, index) })
-                        }
-                    }
+        topBar = {
+            if (isMultiSelectMode) {
+                MultiSelectTopBar(
+                    selectedCount = selectedSongs.size,
+                    onClose = { songsViewModel.exitMultiSelectMode() },
+                    onAddToPlaylist = { songsViewModel.showMultiSelectAddToPlaylist() },
+                    onRemove = { songsViewModel.hideSelectedSongs() }
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("Jayto Music") }
+                )
+            }
+        },
+        floatingActionButton = {
+            if (selectedCategory == MainCategory.PLAYLISTS) {
+                FloatingActionButton(onClick = { showCreatePlaylistDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Playlist")
                 }
             }
-
-            if (favorites.isNotEmpty()) {
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-                item { Text("Favorites", style = MaterialTheme.typography.titleLarge) }
-                item {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        items(favorites.withIndex().toList()) { (index, song) ->
-                            SongCard(song = song, onClick = { songsViewModel.playSongs(favorites, index) })
-                        }
-                    }
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-            item { Text("Library", style = MaterialTheme.typography.titleLarge) }
-            item { HomeCategoryItem("All Songs", onNavigateToSongs) }
-            item { HomeCategoryItem("Albums", onNavigateToAlbums) }
-            item { HomeCategoryItem("Artists", onNavigateToArtists) }
-            item { HomeCategoryItem("Playlists", onNavigateToPlaylists) }
         }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            // Category Filter Chips
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(MainCategory.entries.toTypedArray()) { category ->
+                    FilterChip(
+                        selected = selectedCategory == category,
+                        onClick = { songsViewModel.selectCategory(category) },
+                        label = { Text(category.displayName) }
+                    )
+                }
+            }
+
+            when (selectedCategory) {
+                MainCategory.SONGS -> {
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        if (recentlyPlayed.isNotEmpty()) {
+                            item {
+                                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                    Text(
+                                        text = "Recently Played",
+                                        style = MaterialTheme.typography.titleLarge
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        items(recentlyPlayed.withIndex().toList()) { (index, song) ->
+                                            SongCard(
+                                                song = song,
+                                                onClick = { songsViewModel.playSongs(recentlyPlayed, index) }
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "All Songs",
+                                        style = MaterialTheme.typography.titleLarge
+                                    )
+                                }
+                            }
+                        }
+
+                        items(songs, key = { it.id }) { song ->
+                            val isSelected = selectedSongs.contains(song.id)
+                            val index = songs.indexOf(song)
+
+                            ReorderableItem(reorderableState, key = song.id) { isDragging ->
+                                val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp)
+                                val backgroundColor = if (isDragging) {
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                } else if (isSelected) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                }
+
+                                Surface(
+                                    shadowElevation = elevation,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = backgroundColor
+                                ) {
+                                    SongItem(
+                                        song = song,
+                                        onClick = {
+                                            if (isMultiSelectMode) {
+                                                songsViewModel.toggleSelection(song.id)
+                                            } else {
+                                                songsViewModel.playSongs(songs, index)
+                                            }
+                                        },
+                                        onHide = { songsViewModel.hideSong(song) },
+                                        onAddToPlaylist = { songsViewModel.showAddToPlaylistDialog(song) },
+                                        onSearchArt = { songsViewModel.searchAlbumArt(song) },
+                                        onLongClick = {
+                                            if (!isMultiSelectMode) {
+                                                songsViewModel.enterMultiSelectMode(song.id)
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            }
+                                        },
+                                        isSelected = isSelected,
+                                        draggableModifier = Modifier.longPressDraggableHandle(
+                                            onDragStarted = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            }
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                MainCategory.PLAYLISTS -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        items(playlistList) { playlist ->
+                            PlaylistItem(playlist = playlist, onClick = { onPlaylistClick(playlist) })
+                        }
+                    }
+                }
+
+                MainCategory.ARTISTS -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        items(artists) { artist ->
+                            ArtistItem(artist = artist, onClick = { onArtistClick(artist) })
+                        }
+                    }
+                }
+
+                MainCategory.ALBUMS -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        items(albums) { album ->
+                            AlbumItem(album = album, onClick = { onAlbumClick(album) })
+                        }
+                    }
+                }
+            }
+        }
+
+        if (selectedSongForPlaylist != null) {
+            AddToPlaylistDialog(
+                playlists = playlists,
+                onDismiss = { songsViewModel.dismissAddToPlaylistDialog() },
+                onPlaylistSelected = {
+                    if (isMultiSelectMode) {
+                        songsViewModel.addSelectedToPlaylist(it)
+                    } else {
+                        songsViewModel.addSongToPlaylist(it)
+                    }
+                }
+            )
+        }
+
+        ArtSearchDialog(
+            state = artSearchState,
+            onDismiss = { songsViewModel.dismissArtSearch() },
+            onArtSelected = { songId, url -> songsViewModel.selectAlbumArt(songId, url) },
+            onPerformSearch = { song, title, artist -> songsViewModel.performArtSearch(song, title, artist) }
+        )
     }
 }
 
@@ -96,20 +309,6 @@ fun SongCard(song: Song, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = song.title, maxLines = 1, style = MaterialTheme.typography.titleSmall)
             Text(text = song.artist, maxLines = 1, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@Composable
-fun HomeCategoryItem(title: String, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Box(modifier = Modifier.padding(16.dp)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
         }
     }
 }
