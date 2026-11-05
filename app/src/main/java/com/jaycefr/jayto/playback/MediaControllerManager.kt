@@ -89,6 +89,26 @@ class MediaControllerManager @Inject constructor(
     fun skipToPrevious() { controller?.seekToPrevious() }
     fun seekTo(position: Long) { controller?.seekTo(position) }
 
+    fun toggleShuffle() {
+        controller?.let { player ->
+            val newShuffleMode = !player.shuffleModeEnabled
+            player.shuffleModeEnabled = newShuffleMode
+            _state.update { it.copy(shuffleModeEnabled = newShuffleMode) }
+        }
+    }
+
+    fun toggleRepeat() {
+        controller?.let { player ->
+            val nextRepeatMode = when (player.repeatMode) {
+                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                else -> Player.REPEAT_MODE_OFF
+            }
+            player.repeatMode = nextRepeatMode
+            _state.update { it.copy(repeatMode = nextRepeatMode) }
+        }
+    }
+
     fun playMediaItem(mediaItem: MediaItem) {
         controller?.let {
             it.setMediaItem(mediaItem)

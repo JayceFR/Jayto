@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 // Navy & Muted Rose Custom Palette
 val DeepNavy = Color(0xFF0E1F2F)        // Main background
-val MidnightBlue = Color(0xFF0A1C40)    // Secondary background
+val MidnightBlue = Color(0x860F2133)    // Secondary background
 val SlateBlue = Color(0xFF26405B)       // Cards / surfaces
 val SlateElevated = Color(0xFF304B68)   // Elevated surfaces
 val MutedRose = Color(0xFFC38EB4)       // Primary accent

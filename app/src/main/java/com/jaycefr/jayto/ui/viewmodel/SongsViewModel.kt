@@ -64,7 +64,16 @@ class SongsViewModel @Inject constructor(
     private val _artSearchState = MutableStateFlow<ArtSearchState>(ArtSearchState.Idle)
     val artSearchState = _artSearchState.asStateFlow()
 
-    val state = mediaControllerManager.state
+    val currentSongId: StateFlow<Long?> =
+        mediaControllerManager.state
+            .map { playbackState ->
+                playbackState.currentSong?.mediaId?.toLong()
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = null
+            )
 
     fun scanSongs() {
         viewModelScope.launch {

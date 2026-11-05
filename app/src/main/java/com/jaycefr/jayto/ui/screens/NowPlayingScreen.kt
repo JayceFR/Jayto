@@ -1,5 +1,7 @@
 package com.jaycefr.jayto.ui.screens
 
+import androidx.compose.foundation.MarqueeAnimationMode
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -72,12 +74,26 @@ fun NowPlayingScreen(
             Text(
                 text = song.mediaMetadata.title?.toString() ?: "Unknown",
                 style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                softWrap = false,
+                maxLines = 1,
+                modifier = Modifier.basicMarquee(
+                    iterations = Int.MAX_VALUE,
+                    animationMode = MarqueeAnimationMode.Immediately,
+                    velocity = 40.dp
+                )
             )
             Text(
                 text = song.mediaMetadata.artist?.toString() ?: "Unknown",
                 style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                softWrap = false,
+                maxLines = 1,
+                modifier = Modifier.basicMarquee(
+                    iterations = Int.MAX_VALUE,
+                    animationMode = MarqueeAnimationMode.Immediately,
+                    velocity = 40.dp
+                )
             )
 
             Spacer(modifier = Modifier.height(32.dp))

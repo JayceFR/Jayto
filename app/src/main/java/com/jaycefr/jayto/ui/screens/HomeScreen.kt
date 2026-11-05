@@ -58,6 +58,7 @@ fun HomeScreen(
     val selectedSongs by songsViewModel.selectedSongs.collectAsState()
     val isMultiSelectMode by songsViewModel.isMultiSelectMode.collectAsState()
     val artSearchState by songsViewModel.artSearchState.collectAsState()
+    val currentPlayingSongId by songsViewModel.currentSongId.collectAsState()
 
     val albums by albumsViewModel.albums.collectAsState()
     val artists by artistsViewModel.artists.collectAsState()
@@ -220,6 +221,7 @@ fun HomeScreen(
                                     Column {
                                         SongItem(
                                             song = song,
+                                            currentPlayingSong = currentPlayingSongId == song.id,
                                             onClick = {
                                                 if (isMultiSelectMode) {
                                                     songsViewModel.toggleSelection(song.id)
