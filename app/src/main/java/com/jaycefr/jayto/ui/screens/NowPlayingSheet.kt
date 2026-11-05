@@ -13,7 +13,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.jaycefr.jayto.R
 import com.jaycefr.jayto.playback.MediaControllerManager
 
 @Composable
@@ -25,6 +30,7 @@ fun NowPlayingSheet(
     val song = state.currentSong
 
     if (song != null) {
+        val defaultArt = painterResource(id = R.drawable.ic_default_artwork)
         Surface(
             tonalElevation = 8.dp,
             modifier = Modifier
@@ -33,14 +39,25 @@ fun NowPlayingSheet(
         ) {
             Row(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(12.dp)
                     .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                AsyncImage(
+                    model = song.mediaMetadata.artworkUri ?: R.drawable.ic_default_artwork,
+                    placeholder = defaultArt,
+                    error = defaultArt,
+                    fallback = defaultArt,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(MaterialTheme.shapes.small),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = song.mediaMetadata.title?.toString() ?: "Unknown", style = MaterialTheme.typography.titleMedium)
-                    Text(text = song.mediaMetadata.artist?.toString() ?: "Unknown", style = MaterialTheme.typography.bodySmall)
+                    Text(text = song.mediaMetadata.title?.toString() ?: "Unknown", style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                    Text(text = song.mediaMetadata.artist?.toString() ?: "Unknown", style = MaterialTheme.typography.bodySmall, maxLines = 1)
                 }
 
                 Row {

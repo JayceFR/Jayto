@@ -2,10 +2,13 @@ package com.jaycefr.jayto.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Navy & Muted Rose Custom Palette
+val DeepNavy = Color(0xFF0E1F2F)        // Main background
+val MidnightBlue = Color(0xFF0A1C40)    // Secondary background
+val SlateBlue = Color(0xFF26405B)       // Cards / surfaces
+val SlateElevated = Color(0xFF304B68)   // Elevated surfaces
+val MutedRose = Color(0xFFC38EB4)       // Primary accent
+val PowderBlue = Color(0xFF86A3CC)      // Secondary accent
+val SoftWhite = Color(0xFFF3E6EF)       // Primary text
+val MutedBlueGrey = Color(0xFFA6B5CA)   // Secondary text
+val DarkSlate = Color(0xFF40546A)       // Dividers

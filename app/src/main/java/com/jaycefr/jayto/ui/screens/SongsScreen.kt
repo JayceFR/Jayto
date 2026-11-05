@@ -341,8 +341,12 @@ fun SongItem(
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val defaultArt = androidx.compose.ui.res.painterResource(id = com.jaycefr.jayto.R.drawable.ic_default_artwork)
             AsyncImage(
-                model = song.artworkUri,
+                model = song.artworkUri ?: com.jaycefr.jayto.R.drawable.ic_default_artwork,
+                placeholder = defaultArt,
+                error = defaultArt,
+                fallback = defaultArt,
                 contentDescription = null,
                 modifier = Modifier
                     .size(48.dp)

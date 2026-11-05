@@ -120,7 +120,12 @@ fun HomeScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text("Jayto Music") }
+                    title = { Text("Jayto Music", style = MaterialTheme.typography.titleLarge) },
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
                 )
             }
         },
@@ -198,7 +203,7 @@ fun HomeScreen(
                                 } else if (isSelected) {
                                     MaterialTheme.colorScheme.secondaryContainer
                                 } else {
-                                    MaterialTheme.colorScheme.surface
+                                    MaterialTheme.colorScheme.background
                                 }
 
                                 Surface(
@@ -206,31 +211,38 @@ fun HomeScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     color = backgroundColor
                                 ) {
-                                    SongItem(
-                                        song = song,
-                                        onClick = {
-                                            if (isMultiSelectMode) {
-                                                songsViewModel.toggleSelection(song.id)
-                                            } else {
-                                                songsViewModel.playSongs(songs, index)
-                                            }
-                                        },
-                                        onHide = { songsViewModel.hideSong(song) },
-                                        onAddToPlaylist = { songsViewModel.showAddToPlaylistDialog(song) },
-                                        onSearchArt = { songsViewModel.searchAlbumArt(song) },
-                                        onLongClick = {
-                                            if (!isMultiSelectMode) {
-                                                songsViewModel.enterMultiSelectMode(song.id)
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            }
-                                        },
-                                        isSelected = isSelected,
-                                        draggableModifier = Modifier.longPressDraggableHandle(
-                                            onDragStarted = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            }
+                                    Column {
+                                        SongItem(
+                                            song = song,
+                                            onClick = {
+                                                if (isMultiSelectMode) {
+                                                    songsViewModel.toggleSelection(song.id)
+                                                } else {
+                                                    songsViewModel.playSongs(songs, index)
+                                                }
+                                            },
+                                            onHide = { songsViewModel.hideSong(song) },
+                                            onAddToPlaylist = { songsViewModel.showAddToPlaylistDialog(song) },
+                                            onSearchArt = { songsViewModel.searchAlbumArt(song) },
+                                            onLongClick = {
+                                                if (!isMultiSelectMode) {
+                                                    songsViewModel.enterMultiSelectMode(song.id)
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                }
+                                            },
+                                            isSelected = isSelected,
+                                            draggableModifier = Modifier.longPressDraggableHandle(
+                                                onDragStarted = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                }
+                                            )
                                         )
-                                    )
+                                        HorizontalDivider(
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                                            thickness = 0.5.dp,
+                                            modifier = Modifier.padding(horizontal = 16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -297,6 +309,7 @@ fun HomeScreen(
 
 @Composable
 fun SongCard(song: Song, onClick: () -> Unit) {
+    val defaultArt = androidx.compose.ui.res.painterResource(id = com.jaycefr.jayto.R.drawable.ic_default_artwork)
     Card(
         modifier = Modifier
             .width(150.dp)
@@ -304,7 +317,10 @@ fun SongCard(song: Song, onClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             AsyncImage(
-                model = song.artworkUri,
+                model = song.artworkUri ?: com.jaycefr.jayto.R.drawable.ic_default_artwork,
+                placeholder = defaultArt,
+                error = defaultArt,
+                fallback = defaultArt,
                 contentDescription = null,
                 modifier = Modifier
                     .size(134.dp)
