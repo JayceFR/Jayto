@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jayto - Android Music Player</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-glow"></div>
+
+    <main class="container">
+        <header class="hero">
+            <div class="logo-container">
+                <svg class="app-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 2a10 10 0 0 1 10 10"></path>
+                    <path d="M12 12l4.5-4.5"></path>
+                </svg>
+            </div>
+            <h1 class="title">Jayto</h1>
+            <p class="tagline">Modern Music & Audio Experience for Android</p>
+        </header>
+
+        <section class="download-card">
+            <div class="card-header">
+                <h2>Latest Release</h2>
+                <span class="badge">Debug APK</span>
+            </div>
+            <p class="description">Download the latest Android application package for Jayto directly to your device.</p>
+
+            <a href="jayto-debug.apk" class="download-button" id="downloadBtn" download>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Download Jayto APK</span>
+            </a>
+
+            <div class="meta-info">
+                <span class="meta-item">
+                    <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                    Android 10+ (API 29+)
+                </span>
+                <span class="meta-item">
+                    <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Direct Install
+                </span>
+            </div>
+        </section>
+
+        <section class="instructions">
+            <h3>Installation Instructions</h3>
+            <ol class="steps">
+                <li>Tap <strong>Download Jayto APK</strong> above.</li>
+                <li>Open the downloaded <code>jayto-debug.apk</code> file on your Android device.</li>
+                <li>If prompted, enable <em>"Install from unknown sources"</em> in your system settings.</li>
+                <li>Follow the on-screen prompts to complete installation and open Jayto.</li>
+            </ol>
+        </section>
+
+        <footer class="footer">
+            <p>&copy; Jayto Music App. Built automatically with GitHub Actions.</p>
+        </footer>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
