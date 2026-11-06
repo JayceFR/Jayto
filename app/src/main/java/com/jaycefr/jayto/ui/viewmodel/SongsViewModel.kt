@@ -67,7 +67,7 @@ class SongsViewModel @Inject constructor(
     val currentSongId: StateFlow<Long?> =
         mediaControllerManager.state
             .map { playbackState ->
-                playbackState.currentSong?.mediaId?.toLong()
+                playbackState.currentSong?.mediaId?.toLongOrNull()
             }
             .stateIn(
                 scope = viewModelScope,

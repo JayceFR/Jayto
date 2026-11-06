@@ -2,7 +2,9 @@ package com.jaycefr.jayto.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.net.Uri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -20,6 +22,7 @@ class MediaControllerManager @Inject constructor(
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var controller: MediaController? = null
+    private var pendingUri: Uri? = null
 
     private val _state = MutableStateFlow(PlaybackState())
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
@@ -50,6 +53,11 @@ class MediaControllerManager @Inject constructor(
                 override fun onRepeatModeChanged(mode: Int) { updateState() }
 
             })
+
+            pendingUri?.let { uri ->
+                playMediaUri(uri)
+                pendingUri = null
+            }
         }
     }
 
@@ -107,6 +115,75 @@ class MediaControllerManager @Inject constructor(
             player.repeatMode = nextRepeatMode
             _state.update { it.copy(repeatMode = nextRepeatMode) }
         }
+    }
+
+    fun playMediaUri(uri: Uri) {
+        val metadata = getMediaMetadataFromUri(uri)
+        val mediaItem = MediaItem.Builder()
+            .setMediaId(uri.toString())
+            .setUri(uri)
+            .setMediaMetadata(metadata)
+            .build()
+
+        val player = controller
+        if (player != null) {
+            player.setMediaItem(mediaItem)
+            player.prepare()
+            player.play()
+        } else {
+            pendingUri = uri
+        }
+    }
+
+    private fun getMediaMetadataFromUri(uri: Uri): MediaMetadata {
+        var title: String? = null
+        var artist: String? = null
+        var album: String? = null
+
+        val retriever = android.media.MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(context, uri)
+            title = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
+            artist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
+            album = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ALBUM)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            try {
+                retriever.release()
+            } catch (ignored: Exception) {}
+        }
+
+        if (title.isNullOrBlank() && uri.scheme == "content") {
+            try {
+                context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (index != -1) {
+                            title = cursor.getString(index)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        if (title.isNullOrBlank()) {
+            title = uri.lastPathSegment ?: "Unknown Track"
+        }
+        
+        if (title.contains(".")) {
+            title = title.substringBeforeLast(".")
+        }
+
+        return MediaMetadata.Builder()
+            .setTitle(title)
+            .setArtist(artist ?: "<Unknown>")
+            .setAlbumTitle(album ?: "<Unknown>")
+            .setIsPlayable(true)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+            .build()
     }
 
     fun playMediaItem(mediaItem: MediaItem) {

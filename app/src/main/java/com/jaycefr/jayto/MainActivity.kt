@@ -1,6 +1,7 @@
 package com.jaycefr.jayto
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -46,6 +47,22 @@ class MainActivity : ComponentActivity() {
 
                 MainScreen(mediaControllerManager = mediaControllerManager)
             }
+        }
+        handleIncomingIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action
+        val uri = intent.data
+        if ((action == Intent.ACTION_VIEW || action == "android.intent.action.MUSIC_PLAYER") && uri != null) {
+            mediaControllerManager.playMediaUri(uri)
         }
     }
 }
