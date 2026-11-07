@@ -12,5 +12,7 @@ data class PlaybackState(
     val shuffleModeEnabled: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val hasNext: Boolean = false,
-    val hasPrevious: Boolean = false
+    val hasPrevious: Boolean = false,
+    val queue: List<MediaItem> = emptyList(),
+    val currentMediaItemIndex: Int = -1
 )

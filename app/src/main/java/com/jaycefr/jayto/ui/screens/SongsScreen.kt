@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,6 +43,7 @@ fun MultiSelectTopBar(
     selectedCount: Int,
     onClose: () -> Unit,
     onAddToPlaylist: () -> Unit,
+    onAddToQueue: () -> Unit,
     onRemove: () -> Unit
 ) {
     TopAppBar(
@@ -52,6 +54,9 @@ fun MultiSelectTopBar(
             }
         },
         actions = {
+            IconButton(onClick = onAddToQueue) {
+                Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Add to Queue")
+            }
             IconButton(onClick = onAddToPlaylist) {
                 Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to Playlist")
             }
@@ -205,6 +210,7 @@ fun SongItem(
     song: Song,
     onClick: () -> Unit,
     onHide: () -> Unit,
+    onAddToQueue: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
     onSearchArt: (() -> Unit)? = null,
     onLongClick: () -> Unit = {},
@@ -214,10 +220,18 @@ fun SongItem(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
+    val itemBackgroundColor = when {
+        isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        currentPlayingSong -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+        else -> androidx.compose.ui.graphics.Color.Transparent
+    }
+
     Box {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(MaterialTheme.shapes.small)
+                .background(itemBackgroundColor)
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { onClick() },
@@ -228,22 +242,9 @@ fun SongItem(
                         }
                     )
                 }
-                .padding(vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val defaultArt = androidx.compose.ui.res.painterResource(id = com.jaycefr.jayto.R.drawable.ic_default_artwork)
-//            AsyncImage(
-//                model = song.artworkUri ?: com.jaycefr.jayto.R.drawable.ic_default_artwork,
-//                placeholder = defaultArt,
-//                error = defaultArt,
-//                fallback = defaultArt,
-//                contentDescription = null,
-//                modifier = Modifier
-//                    .size(48.dp)
-//                    .clip(MaterialTheme.shapes.small)
-//                    .then(draggableModifier),
-//                contentScale = ContentScale.Crop
-//            )
             RotatingArtwork(
                 artworkUri = song.artworkUri,
                 isPlaying = currentPlayingSong,
@@ -290,6 +291,16 @@ fun SongItem(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
         ) {
+            if (onAddToQueue != null) {
+                DropdownMenuItem(
+                    text = { Text("Add to Queue") },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
+                    onClick = { 
+                        showMenu = false
+                        onAddToQueue()
+                    }
+                )
+            }
             if (onSearchArt != null) {
                 DropdownMenuItem(
                     text = { Text("Search for Album Art") },

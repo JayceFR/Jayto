@@ -13,11 +13,13 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ImageSearch
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,6 +55,7 @@ fun HomeScreen(
     onPlaylistClick: (Playlist) -> Unit
 ) {
     val songs by songsViewModel.displaySongs.collectAsState()
+    val searchQuery by songsViewModel.searchQuery.collectAsState()
     val recentlyPlayed by songsViewModel.recentlyPlayed.collectAsState()
     val selectedCategory by songsViewModel.selectedCategory.collectAsState()
     val selectedSongForPlaylist by songsViewModel.selectedSongForPlaylist.collectAsState()
@@ -68,6 +71,7 @@ fun HomeScreen(
 
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
+    var isSearchActive by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
     val lazyListState = rememberLazyListState()
@@ -125,11 +129,53 @@ fun HomeScreen(
                     selectedCount = selectedSongs.size,
                     onClose = { songsViewModel.exitMultiSelectMode() },
                     onAddToPlaylist = { songsViewModel.showMultiSelectAddToPlaylist() },
+                    onAddToQueue = { songsViewModel.addSelectedToQueue() },
                     onRemove = { songsViewModel.hideSelectedSongs() }
+                )
+            } else if (isSearchActive) {
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { songsViewModel.updateSearchQuery(it) },
+                            placeholder = { Text("Search songs, artists, albums...", style = MaterialTheme.typography.bodyMedium) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedBorderColor = Color.Transparent
+                            ),
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { songsViewModel.updateSearchQuery("") }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear")
+                                    }
+                                }
+                            }
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            isSearchActive = false
+                            songsViewModel.updateSearchQuery("")
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
                 )
             } else {
                 TopAppBar(
                     title = { Text("Jayto Music", style = MaterialTheme.typography.titleLarge) },
+                    actions = {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
+                    },
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
@@ -217,6 +263,8 @@ fun HomeScreen(
                                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                                 } else if (isSelected) {
                                     MaterialTheme.colorScheme.secondaryContainer
+                                } else if (currentPlayingSongId == song.id) {
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)
                                 } else {
                                     MaterialTheme.colorScheme.background
                                 }
@@ -238,6 +286,7 @@ fun HomeScreen(
                                                 }
                                             },
                                             onHide = { songsViewModel.hideSong(song) },
+                                            onAddToQueue = { songsViewModel.addSongToQueue(song) },
                                             onAddToPlaylist = { songsViewModel.showAddToPlaylistDialog(song) },
                                             onSearchArt = { songsViewModel.searchAlbumArt(song) },
                                             onLongClick = {

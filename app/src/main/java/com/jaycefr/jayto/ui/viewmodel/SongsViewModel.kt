@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 @HiltViewModel
 class SongsViewModel @Inject constructor(
     private val songRepository: SongRepository,
@@ -38,13 +39,37 @@ class SongsViewModel @Inject constructor(
         _selectedCategory.value = category
     }
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
     private val _displaySongs = MutableStateFlow<List<Song>>(emptyList())
     val displaySongs = _displaySongs.asStateFlow()
 
     init {
         viewModelScope.launch {
-            songs.collect { list ->
-                _displaySongs.value = list
+            val debouncedQuery = _searchQuery
+                .debounce { if (it.isBlank()) 0L else 250L }
+                .distinctUntilChanged()
+
+            combine(songs, debouncedQuery) { list, query ->
+                val q = query.trim()
+                if (q.isEmpty()) {
+                    list
+                } else {
+                    list.filter { song ->
+                        song.title.contains(q, ignoreCase = true) ||
+                        song.artist.contains(q, ignoreCase = true) ||
+                        song.album.contains(q, ignoreCase = true)
+                    }
+                }
+            }
+            .flowOn(kotlinx.coroutines.Dispatchers.Default)
+            .collect { filteredList ->
+                _displaySongs.value = filteredList
             }
         }
     }
@@ -83,6 +108,19 @@ class SongsViewModel @Inject constructor(
 
     fun playSong(song: Song) {
         mediaControllerManager.playMediaItem(song.toMediaItem())
+    }
+
+    fun addSongToQueue(song: Song) {
+        mediaControllerManager.addToQueue(song.toMediaItem())
+    }
+
+    fun addSelectedToQueue() {
+        val selectedIds = _selectedSongs.value
+        val selectedSongList = _displaySongs.value.filter { selectedIds.contains(it.id) }
+        if (selectedSongList.isNotEmpty()) {
+            mediaControllerManager.addToQueue(selectedSongList.map { it.toMediaItem() })
+            exitMultiSelectMode()
+        }
     }
 
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {

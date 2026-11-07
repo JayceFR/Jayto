@@ -51,7 +51,12 @@ class MediaControllerManager @Inject constructor(
                 override fun onIsPlayingChanged(playing: Boolean) { updateState() }
                 override fun onShuffleModeEnabledChanged(enabled: Boolean) { updateState() }
                 override fun onRepeatModeChanged(mode: Int) { updateState() }
-
+                override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) { updateState() }
+                override fun onPositionDiscontinuity(
+                    oldPosition: Player.PositionInfo,
+                    newPosition: Player.PositionInfo,
+                    reason: Int
+                ) { updateState() }
             })
 
             pendingUri?.let { uri ->
@@ -63,6 +68,10 @@ class MediaControllerManager @Inject constructor(
 
     private fun updateState() {
         controller?.let { player ->
+            val queueItems = mutableListOf<MediaItem>()
+            for (i in 0 until player.mediaItemCount) {
+                queueItems.add(player.getMediaItemAt(i))
+            }
             _state.update {
                 it.copy(
                     currentSong = player.currentMediaItem,
@@ -72,7 +81,9 @@ class MediaControllerManager @Inject constructor(
                     shuffleModeEnabled = player.shuffleModeEnabled,
                     repeatMode = player.repeatMode,
                     hasNext = player.hasNextMediaItem(),
-                    hasPrevious = player.hasPreviousMediaItem()
+                    hasPrevious = player.hasPreviousMediaItem(),
+                    queue = queueItems,
+                    currentMediaItemIndex = player.currentMediaItemIndex
                 )
             }
         }
@@ -86,7 +97,7 @@ class MediaControllerManager @Inject constructor(
                         _state.update { it.copy(currentPosition = player.currentPosition) }
                     }
                 }
-                delay(1000.milliseconds)
+                delay(500.milliseconds)
             }
         }
     }
@@ -114,6 +125,47 @@ class MediaControllerManager @Inject constructor(
             }
             player.repeatMode = nextRepeatMode
             _state.update { it.copy(repeatMode = nextRepeatMode) }
+        }
+    }
+
+    fun addToQueue(mediaItem: MediaItem) {
+        controller?.let { player ->
+            if (player.mediaItemCount == 0) {
+                playMediaItem(mediaItem)
+            } else {
+                player.addMediaItem(mediaItem)
+                updateState()
+            }
+        }
+    }
+
+    fun addToQueue(mediaItems: List<MediaItem>) {
+        controller?.let { player ->
+            if (player.mediaItemCount == 0) {
+                playMediaItems(mediaItems, 0)
+            } else {
+                player.addMediaItems(mediaItems)
+                updateState()
+            }
+        }
+    }
+
+    fun removeFromQueue(index: Int) {
+        controller?.let { player ->
+            if (index in 0 until player.mediaItemCount) {
+                player.removeMediaItem(index)
+                updateState()
+            }
+        }
+    }
+
+    fun seekToQueueIndex(index: Int) {
+        controller?.let { player ->
+            if (index in 0 until player.mediaItemCount) {
+                player.seekToDefaultPosition(index)
+                player.play()
+                updateState()
+            }
         }
     }
 
