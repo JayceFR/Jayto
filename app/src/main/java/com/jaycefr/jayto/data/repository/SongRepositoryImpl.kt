@@ -93,7 +93,7 @@ class SongRepositoryImpl @Inject constructor(
             MediaStore.Audio.Media.DATE_MODIFIED
         )
 
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.DURATION} >= 1000"
         
         context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -115,12 +115,20 @@ class SongRepositoryImpl @Inject constructor(
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
-                val fileUri = cursor.getString(dataColumn)
-                
-                // Skip if file doesn't exist
-                if (!java.io.File(fileUri).exists()) continue
+                val rawDataPath = cursor.getString(dataColumn)
+                val contentUri = ContentUris.withAppendedId(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    id
+                ).toString()
 
-                val title = cursor.getString(titleColumn)
+                // Use raw path if it exists as file, otherwise fallback to content URI
+                val fileUriToUse = if (!rawDataPath.isNullOrBlank() && java.io.File(rawDataPath).exists()) {
+                    rawDataPath
+                } else {
+                    contentUri
+                }
+
+                val title = cursor.getString(titleColumn) ?: "Unknown"
                 val artist = cursor.getString(artistColumn) ?: "<Unknown>"
                 val album = cursor.getString(albumColumn) ?: "<Unknown>"
                 val duration = cursor.getLong(durationColumn)
@@ -148,7 +156,7 @@ class SongRepositoryImpl @Inject constructor(
                         artist = artist,
                         album = album,
                         duration = duration,
-                        fileUri = fileUri,
+                        fileUri = fileUriToUse,
                         artworkUri = artworkUri,
                         trackNumber = trackNumber % 1000,
                         discNumber = trackNumber / 1000,

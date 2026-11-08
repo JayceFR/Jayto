@@ -23,7 +23,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import coil.request.ImageRequest
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.input.pointer.pointerInput
@@ -344,25 +347,34 @@ fun RotatingArtwork(
         id = com.jaycefr.jayto.R.drawable.ic_default_artwork
     )
 
-    val infiniteTransition = rememberInfiniteTransition(
-        label = "record_rotation"
-    )
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val sizePx = remember(size, density) { with(density) { size.roundToPx() } }
 
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 8000,
-                easing = LinearEasing
+    val imageRequest = remember(artworkUri, sizePx) {
+        ImageRequest.Builder(context)
+            .data(artworkUri ?: com.jaycefr.jayto.R.drawable.ic_default_artwork)
+            .size(sizePx, sizePx)
+            .crossfade(true)
+            .build()
+    }
+
+    val rotation = if (isPlaying) {
+        val infiniteTransition = rememberInfiniteTransition(label = "record_rotation")
+        val angle by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 8000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
             ),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )
+            label = "rotation"
+        )
+        angle
+    } else 0f
 
     AsyncImage(
-        model = artworkUri ?: com.jaycefr.jayto.R.drawable.ic_default_artwork,
+        model = imageRequest,
         placeholder = defaultArt,
         error = defaultArt,
         fallback = defaultArt,
@@ -372,7 +384,7 @@ fun RotatingArtwork(
             .size(size)
             .clip(CircleShape)
             .graphicsLayer {
-                rotationZ = if (isPlaying) rotation else 0f
+                rotationZ = rotation
             }
     )
 }

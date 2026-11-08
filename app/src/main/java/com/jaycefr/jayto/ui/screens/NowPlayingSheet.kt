@@ -12,6 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import coil.request.ImageRequest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,8 +50,20 @@ fun NowPlayingSheet(
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val context = LocalContext.current
+                val density = LocalDensity.current
+                val sizePx = remember(density) { with(density) { 48.dp.roundToPx() } }
+                val artworkModel = song.mediaMetadata.artworkUri
+                val imageRequest = remember(artworkModel, sizePx) {
+                    ImageRequest.Builder(context)
+                        .data(artworkModel ?: R.drawable.ic_default_artwork)
+                        .size(sizePx, sizePx)
+                        .crossfade(true)
+                        .build()
+                }
+
                 AsyncImage(
-                    model = song.mediaMetadata.artworkUri ?: R.drawable.ic_default_artwork,
+                    model = imageRequest,
                     placeholder = defaultArt,
                     error = defaultArt,
                     fallback = defaultArt,

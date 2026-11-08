@@ -2,20 +2,21 @@ package com.jaycefr.jayto
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Modifier
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.navigation.compose.rememberNavController
 import com.jaycefr.jayto.playback.MediaControllerManager
+import com.jaycefr.jayto.ui.PermissionDeniedScreen
+import com.jaycefr.jayto.ui.PermissionScreen
 import com.jaycefr.jayto.ui.screens.MainScreen
 import com.jaycefr.jayto.ui.theme.JaytoTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -33,19 +34,55 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             JaytoTheme {
-                LaunchedEffect(Unit) {
-                    val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        arrayOf(
-                            Manifest.permission.READ_MEDIA_AUDIO,
-                            Manifest.permission.POST_NOTIFICATIONS
-                        )
-                    } else {
-                        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-                    }
-                    requestPermissions(permissions, 0)
+                val context = LocalContext.current
+                val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    arrayOf(
+                        Manifest.permission.READ_MEDIA_AUDIO,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    )
+                } else {
+                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
 
-                MainScreen(mediaControllerManager = mediaControllerManager)
+                fun hasAudioPermission(): Boolean {
+                    val audioPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Manifest.permission.READ_MEDIA_AUDIO
+                    } else {
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    }
+                    return ContextCompat.checkSelfPermission(context, audioPerm) == PackageManager.PERMISSION_GRANTED
+                }
+
+                var isPermissionGranted by remember { mutableStateOf(hasAudioPermission()) }
+                var showDeniedScreen by remember { mutableStateOf(false) }
+
+                val launcher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestMultiplePermissions()
+                ) {
+                    val granted = hasAudioPermission()
+                    isPermissionGranted = granted
+                    showDeniedScreen = !granted
+                }
+
+                LaunchedEffect(Unit) {
+                    if (!isPermissionGranted) {
+                        launcher.launch(requiredPermissions)
+                    }
+                }
+
+                if (isPermissionGranted) {
+                    MainScreen(mediaControllerManager = mediaControllerManager)
+                } else if (showDeniedScreen) {
+                    PermissionDeniedScreen(
+                        onRetry = { launcher.launch(requiredPermissions) },
+                        onExit = { finish() }
+                    )
+                } else {
+                    PermissionScreen(
+                        onAllow = { launcher.launch(requiredPermissions) },
+                        onDeny = { showDeniedScreen = true }
+                    )
+                }
             }
         }
         handleIncomingIntent(intent)
