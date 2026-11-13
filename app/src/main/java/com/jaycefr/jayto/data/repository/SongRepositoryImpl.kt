@@ -55,6 +55,17 @@ class SongRepositoryImpl @Inject constructor(
         return entities.map { it.toDomain() }
     }
 
+    override suspend fun getSongPosition(song: Song, query: String): Int =
+        if (query.isBlank()) {
+            songDao.getSongPosition(song.id, song.customOrder)
+        } else {
+            songDao.searchSongPosition(query.trim(), song.id, song.customOrder)
+        }
+
+    override suspend fun moveSong(fromId: Long, toId: Long) {
+        songDao.moveSong(fromId, toId)
+    }
+
     override fun getRecentlyPlayed(): Flow<List<Song>> =
         songDao.getRecentlyPlayed().map { entities -> entities.map { it.toDomain() } }
 

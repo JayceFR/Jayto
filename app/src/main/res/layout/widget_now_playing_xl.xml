@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  4x2 and up: now playing with full transport on top, and a "recently played" row below whose tiles
+  start playback without opening the app. Also the picker preview (previewLayout) and initialLayout,
+  so its defaults must look right on their own.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_root_background"
+    android:clipToOutline="true"
+    tools:targetApi="s">
+
+    <include layout="@layout/widget_now_playing_layers" />
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="@dimen/widget_padding">
+
+        <LinearLayout
+            android:id="@+id/widget_recents"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/widget_recent_tile_height"
+            android:layout_alignParentBottom="true"
+            android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/widget_recent_0"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackground"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_art_placeholder"
+            android:visibility="invisible" />
+        <ImageView
+            android:id="@+id/widget_recent_1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_art_placeholder"
+            android:visibility="invisible" />
+        <ImageView
+            android:id="@+id/widget_recent_2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_art_placeholder"
+            android:visibility="invisible" />
+        <ImageView
+            android:id="@+id/widget_recent_3"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_art_placeholder"
+            android:visibility="invisible" />
+        <ImageView
+            android:id="@+id/widget_recent_4"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_art_placeholder"
+            android:visibility="invisible" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_above="@id/widget_recents"
+            android:layout_alignParentTop="true"
+            android:layout_marginBottom="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/widget_art"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/widget_art_description"
+                android:maxWidth="120dp"
+                android:maxHeight="120dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/widget_art_placeholder" />
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/widget_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="1"
+                        android:text="@string/widget_preview_title"
+                        android:textColor="@color/widget_text_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/widget_artist"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/widget_preview_artist"
+                        android:textColor="@color/widget_text_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/widget_shuffle"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/widget_shuffle_off"
+                        android:padding="8dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_widget_shuffle"
+                        android:tint="@color/widget_text_secondary"
+                        android:visibility="visible" />
+
+                    <ImageView
+                        android:id="@+id/widget_prev"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/widget_previous"
+                        android:padding="8dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_widget_previous"
+                        android:tint="@color/widget_text_primary"
+                        android:visibility="visible" />
+
+                    <include layout="@layout/widget_now_playing_play_button" />
+
+                    <ImageView
+                        android:id="@+id/widget_next"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/widget_next"
+                        android:padding="8dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_widget_next"
+                        android:tint="@color/widget_text_primary"
+                        android:visibility="visible" />
+
+                    <ImageView
+                        android:id="@+id/widget_repeat"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/widget_repeat_off"
+                        android:padding="8dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_widget_repeat"
+                        android:tint="@color/widget_text_secondary"
+                        android:visibility="visible" />
+                </LinearLayout>
+            </FrameLayout>
+        </LinearLayout>
+    </RelativeLayout>
+</FrameLayout>

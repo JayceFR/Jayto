@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: follow the system shape and the wallpaper (Material You) colours. -->
+    <color name="widget_fallback_background">@android:color/system_accent1_900</color>
+    <color name="widget_fallback_accent">@android:color/system_accent1_200</color>
+    <color name="widget_fallback_on_accent">@android:color/system_accent1_900</color>
+    <color name="widget_placeholder_background">@android:color/system_accent1_700</color>
+
+    <dimen name="widget_corner_radius">@android:dimen/system_app_widget_background_radius</dimen>
+</resources>

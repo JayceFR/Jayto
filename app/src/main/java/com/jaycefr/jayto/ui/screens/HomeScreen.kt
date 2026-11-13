@@ -77,14 +77,12 @@ fun HomeScreen(
 
     val haptic = LocalHapticFeedback.current
     val lazyListState = rememberLazyListState()
-    val headerOffset = if (selectedCategory == MainCategory.SONGS && recentlyPlayed.isNotEmpty()) 1 else 0
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val fromIndex = from.index - headerOffset
-        val toIndex = to.index - headerOffset
-        val count = pagedSongs.itemCount
-        if (fromIndex in 0 until count && toIndex in 0 until count) {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
+        // Song rows are keyed by song id; the "Recently Played" header has a non-Long key and is skipped.
+        val fromId = from.key as? Long ?: return@rememberReorderableLazyListState
+        val toId = to.key as? Long ?: return@rememberReorderableLazyListState
+        songsViewModel.moveSong(fromId, toId)
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
     LaunchedEffect(Unit) {
@@ -287,7 +285,7 @@ fun HomeScreen(
                                                 if (isMultiSelectMode) {
                                                     songsViewModel.toggleSelection(song.id)
                                                 } else {
-                                                    songsViewModel.playSongInWindow(song, index)
+                                                    songsViewModel.playSongInWindow(song)
                                                 }
                                             },
                                             onHide = { songsViewModel.hideSong(song) },

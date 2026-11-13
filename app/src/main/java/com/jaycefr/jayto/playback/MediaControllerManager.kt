@@ -9,6 +9,8 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import com.jaycefr.jayto.domain.model.toMediaItem
+import com.jaycefr.jayto.domain.repository.SongRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -18,15 +20,17 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class MediaControllerManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val songRepository: SongRepository
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var controller: MediaController? = null
     private var pendingUri: Uri? = null
 
-    var onPrefetchNextBatch: (suspend (nextOffset: Int) -> List<MediaItem>)? = null
-    private var currentWindowNextOffset = 0
-    private var isPrefetching = false
+    private data class SongWindow(val query: String, var nextOffset: Int, val firstMediaId: String?)
+
+    private var window: SongWindow? = null
+    private var prefetchJob: Job? = null
 
     private val _state = MutableStateFlow(PlaybackState())
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
@@ -56,9 +60,22 @@ class MediaControllerManager @Inject constructor(
                 }
                 override fun onPlaybackStateChanged(state: Int) { updateState() }
                 override fun onIsPlayingChanged(playing: Boolean) { updateState() }
-                override fun onShuffleModeEnabledChanged(enabled: Boolean) { updateState() }
+                override fun onShuffleModeEnabledChanged(enabled: Boolean) {
+                    updateState()
+                    checkPrefetch() // what's "upcoming" changes with the play order
+                }
                 override fun onRepeatModeChanged(mode: Int) { updateState() }
-                override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) { updateState() }
+                override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                    // The queue can be replaced outside this class (e.g. the home-screen widget
+                    // starting a "recent" queue in the service). Appends keep the first item, so a
+                    // different first item means our library window no longer owns the queue.
+                    if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
+                        val current = window
+                        val first = if (player.mediaItemCount > 0) player.getMediaItemAt(0).mediaId else null
+                        if (current != null && current.firstMediaId != first) clearWindow()
+                    }
+                    updateState()
+                }
                 override fun onPositionDiscontinuity(
                     oldPosition: Player.PositionInfo,
                     newPosition: Player.PositionInfo,
@@ -186,6 +203,7 @@ class MediaControllerManager @Inject constructor(
 
         val player = controller
         if (player != null) {
+            clearWindow()
             player.setMediaItem(mediaItem)
             player.prepare()
             player.play()
@@ -247,6 +265,7 @@ class MediaControllerManager @Inject constructor(
 
     fun playMediaItem(mediaItem: MediaItem) {
         controller?.let {
+            clearWindow()
             it.setMediaItem(mediaItem)
             it.prepare()
             it.play()
@@ -255,38 +274,78 @@ class MediaControllerManager @Inject constructor(
 
     fun playMediaItems(mediaItems: List<MediaItem>, index: Int) {
         controller?.let {
+            clearWindow()
             it.setMediaItems(mediaItems, index, 0L)
             it.prepare()
             it.play()
         }
     }
 
-    fun playWindowedSongs(mediaItems: List<MediaItem>, initialIndex: Int, nextOffset: Int) {
-        currentWindowNextOffset = nextOffset
-        playMediaItems(mediaItems, initialIndex)
+    /**
+     * Plays a slice of the library. [query] is the search the slice came from; [nextOffset] is the
+     * library position right after the slice. More songs from the same query are appended as the
+     * queue nears its end.
+     */
+    fun playWindowedSongs(mediaItems: List<MediaItem>, initialIndex: Int, nextOffset: Int, query: String) {
+        playMediaItems(mediaItems, initialIndex) // clears any previous window
+        if (controller != null) {
+            window = SongWindow(query, nextOffset, mediaItems.firstOrNull()?.mediaId)
+        }
+    }
+
+    private fun clearWindow() {
+        window = null
+        prefetchJob?.cancel()
+        prefetchJob = null
     }
 
     private fun checkPrefetch() {
-        controller?.let { player ->
-            val remaining = player.mediaItemCount - player.currentMediaItemIndex
-            if (remaining <= 3 && !isPrefetching && onPrefetchNextBatch != null) {
-                isPrefetching = true
-                scope.launch {
-                    try {
-                        val nextBatch = onPrefetchNextBatch?.invoke(currentWindowNextOffset) ?: emptyList()
-                        if (nextBatch.isNotEmpty()) {
-                            currentWindowNextOffset += nextBatch.size
-                            player.addMediaItems(nextBatch)
-                            updateState()
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    } finally {
-                        isPrefetching = false
-                    }
+        val player = controller ?: return
+        val currentWindow = window ?: return
+        if (prefetchJob?.isActive == true) return
+
+        if (upcomingCount(player) > PREFETCH_THRESHOLD) return
+
+        prefetchJob = scope.launch {
+            try {
+                val nextBatch = withContext(Dispatchers.IO) {
+                    songRepository.getSongsWindow(currentWindow.nextOffset, PREFETCH_BATCH_SIZE, currentWindow.query)
+                        .map { it.toMediaItem() }
                 }
+                // Playback may have been replaced while we were querying.
+                if (window !== currentWindow || nextBatch.isEmpty()) return@launch
+                currentWindow.nextOffset += nextBatch.size
+                player.addMediaItems(nextBatch)
+                updateState()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return@launch
             }
+            // The user may have skipped several songs while we were loading.
+            checkPrefetchAfter(currentWindow)
         }
+    }
+
+    private fun checkPrefetchAfter(previousWindow: SongWindow) {
+        scope.launch {
+            if (window === previousWindow) checkPrefetch()
+        }
+    }
+
+    private fun upcomingCount(player: Player): Int {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) return 0
+        val shuffle = player.shuffleModeEnabled
+        var index = player.currentMediaItemIndex
+        var count = 0
+        while (count <= PREFETCH_THRESHOLD) {
+            index = timeline.getNextWindowIndex(index, Player.REPEAT_MODE_OFF, shuffle)
+            if (index == androidx.media3.common.C.INDEX_UNSET) break
+            count++
+        }
+        return count
     }
 
     fun updateMediaItemMetadata(updatedItem: MediaItem) {
@@ -298,5 +357,10 @@ class MediaControllerManager @Inject constructor(
                 }
             }
         }
+    }
+
+    private companion object {
+        const val PREFETCH_THRESHOLD = 3
+        const val PREFETCH_BATCH_SIZE = 10
     }
 }

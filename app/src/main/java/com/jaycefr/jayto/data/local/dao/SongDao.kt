@@ -9,17 +9,43 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE isHidden = 0 ORDER BY customOrder ASC")
     fun getAllSongs(): Flow<List<SongEntity>>
 
-    @Query("SELECT * FROM songs WHERE isHidden = 0 ORDER BY customOrder ASC")
+    @Query("SELECT * FROM songs WHERE isHidden = 0 ORDER BY customOrder ASC, id ASC")
     fun getPagedSongs(): androidx.paging.PagingSource<Int, SongEntity>
 
-    @Query("SELECT * FROM songs WHERE isHidden = 0 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%') ORDER BY customOrder ASC")
+    @Query("SELECT * FROM songs WHERE isHidden = 0 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%') ORDER BY customOrder ASC, id ASC")
     fun searchPagedSongs(query: String): androidx.paging.PagingSource<Int, SongEntity>
 
-    @Query("SELECT * FROM songs WHERE isHidden = 0 ORDER BY customOrder ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM songs WHERE isHidden = 0 ORDER BY customOrder ASC, id ASC LIMIT :limit OFFSET :offset")
     suspend fun getSongsWindow(offset: Int, limit: Int): List<SongEntity>
 
-    @Query("SELECT * FROM songs WHERE isHidden = 0 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%') ORDER BY customOrder ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM songs WHERE isHidden = 0 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%') ORDER BY customOrder ASC, id ASC LIMIT :limit OFFSET :offset")
     suspend fun searchSongsWindow(query: String, offset: Int, limit: Int): List<SongEntity>
+
+    /** Position of a song in the (unhidden) list ordered by customOrder, id. Matches getSongsWindow offsets. */
+    @Query("SELECT COUNT(*) FROM songs WHERE isHidden = 0 AND (customOrder < :order OR (customOrder = :order AND id < :id))")
+    suspend fun getSongPosition(id: Long, order: Int): Int
+
+    @Query("SELECT COUNT(*) FROM songs WHERE isHidden = 0 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%') AND (customOrder < :order OR (customOrder = :order AND id < :id))")
+    suspend fun searchSongPosition(query: String, id: Long, order: Int): Int
+
+    @Query("SELECT customOrder FROM songs WHERE id = :id")
+    suspend fun getCustomOrder(id: Long): Int?
+
+    @Query("UPDATE songs SET customOrder = customOrder - 1 WHERE customOrder > :fromOrder AND customOrder <= :toOrder")
+    suspend fun shiftOrdersDown(fromOrder: Int, toOrder: Int)
+
+    @Query("UPDATE songs SET customOrder = customOrder + 1 WHERE customOrder >= :toOrder AND customOrder < :fromOrder")
+    suspend fun shiftOrdersUp(fromOrder: Int, toOrder: Int)
+
+    /** Moves one song into another song's slot, shifting everything in between. */
+    @Transaction
+    suspend fun moveSong(fromId: Long, toId: Long) {
+        val fromOrder = getCustomOrder(fromId) ?: return
+        val toOrder = getCustomOrder(toId) ?: return
+        if (fromOrder == toOrder) return
+        if (fromOrder < toOrder) shiftOrdersDown(fromOrder, toOrder) else shiftOrdersUp(fromOrder, toOrder)
+        updateSongOrder(fromId, toOrder)
+    }
 
     @Query("SELECT * FROM songs")
     suspend fun getAllSongsList(): List<SongEntity>

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Singleton
 class PlaybackManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -28,6 +29,8 @@ class PlaybackManager @Inject constructor(
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
         setAudioAttributes(audioAttributes, true)
+        // Keep songs appended by the windowed prefetch *after* the current song in shuffle mode.
+        setShuffleOrder(AppendingShuffleOrder())
     }
 
     private val _currentSong = MutableStateFlow<MediaItem?>(null)

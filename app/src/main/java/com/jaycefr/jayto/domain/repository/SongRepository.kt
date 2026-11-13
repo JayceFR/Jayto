@@ -7,6 +7,8 @@ interface SongRepository {
     fun getAllSongs(): Flow<List<Song>>
     fun getPagedSongs(query: String = ""): Flow<androidx.paging.PagingData<Song>>
     suspend fun getSongsWindow(offset: Int, limit: Int, query: String = ""): List<Song>
+    suspend fun getSongPosition(song: Song, query: String = ""): Int
+    suspend fun moveSong(fromId: Long, toId: Long)
     fun getRecentlyPlayed(): Flow<List<Song>>
     fun getMostPlayed(): Flow<List<Song>>
     fun getFavoriteSongs(): Flow<List<Song>>

@@ -11,7 +11,9 @@ import com.jaycefr.jayto.domain.repository.SongRepository
 import com.jaycefr.jayto.playback.MediaControllerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @OptIn(kotlinx.coroutines.FlowPreview::class)
@@ -79,13 +81,6 @@ class SongsViewModel @Inject constructor(
                 initialValue = null
             )
 
-    init {
-        mediaControllerManager.onPrefetchNextBatch = { nextOffset ->
-            val query = searchQuery.value
-            songRepository.getSongsWindow(nextOffset, 10, query).map { it.toMediaItem() }
-        }
-    }
-
     fun scanSongs() {
         viewModelScope.launch {
             songRepository.scanLocalSongs()
@@ -96,20 +91,37 @@ class SongsViewModel @Inject constructor(
         mediaControllerManager.playMediaItem(song.toMediaItem())
     }
 
-    fun playSongInWindow(song: Song, index: Int) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val query = searchQuery.value
-            val windowOffset = (index - 5).coerceAtLeast(0)
-            val windowLimit = 16
-            val windowSongs = songRepository.getSongsWindow(windowOffset, windowLimit, query)
-            val playingIndex = (index - windowOffset).coerceIn(0, (windowSongs.size - 1).coerceAtLeast(0))
-            val nextOffset = windowOffset + windowSongs.size
+    /**
+     * Plays [song] with a small slice of the current (possibly searched) library around it.
+     * The slice position is looked up from the database by the song's sort key rather than taken
+     * from the paged list index, which stops matching DB offsets after a paging refresh.
+     */
+    fun playSongInWindow(song: Song) {
+        val query = searchQuery.value
+        viewModelScope.launch(Dispatchers.IO) {
+            val position = songRepository.getSongPosition(song, query)
+            val windowOffset = (position - WINDOW_SONGS_BEFORE).coerceAtLeast(0)
+            val windowSongs = songRepository.getSongsWindow(windowOffset, WINDOW_SIZE, query)
 
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            val playingIndex = windowSongs.indexOfFirst { it.id == song.id }
+            val items: List<Song>
+            val startIndex: Int
+            if (playingIndex >= 0) {
+                items = windowSongs
+                startIndex = playingIndex
+            } else {
+                // Song vanished from the query between tap and lookup (hidden, rescanned, ...).
+                // Still play what the user tapped instead of a neighbour.
+                items = listOf(song) + windowSongs.filter { it.id != song.id }
+                startIndex = 0
+            }
+
+            withContext(Dispatchers.Main) {
                 mediaControllerManager.playWindowedSongs(
-                    mediaItems = windowSongs.map { it.toMediaItem() },
-                    initialIndex = playingIndex,
-                    nextOffset = nextOffset
+                    mediaItems = items.map { it.toMediaItem() },
+                    initialIndex = startIndex,
+                    nextOffset = windowOffset + windowSongs.size,
+                    query = query
                 )
             }
         }
@@ -176,10 +188,9 @@ class SongsViewModel @Inject constructor(
         _artSearchState.value = ArtSearchState.Idle
     }
 
-    fun moveSong(songIds: List<Long>) {
-        viewModelScope.launch {
-            songRepository.reorderSongs(songIds)
-        }
+    /** Moves [fromId] into [toId]'s slot. Suspends until the DB write is done so drag-reorder can await it. */
+    suspend fun moveSong(fromId: Long, toId: Long) {
+        songRepository.moveSong(fromId, toId)
     }
 
     fun toggleSelection(songId: Long) {
@@ -257,6 +268,9 @@ sealed class ArtSearchState {
     data class Results(val song: Song, val urls: List<String>) : ArtSearchState()
     object Downloading : ArtSearchState()
 }
+
+private const val WINDOW_SONGS_BEFORE = 5
+private const val WINDOW_SIZE = 16
 
 enum class MainCategory(val displayName: String) {
     SONGS("Songs"),
