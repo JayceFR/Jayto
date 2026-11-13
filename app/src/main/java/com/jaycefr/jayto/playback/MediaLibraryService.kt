@@ -145,11 +145,13 @@ class MediaLibraryService : MediaLibraryService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        session = MediaLibrarySession.Builder(this, playbackManager.exoPlayer, callback)
+        // Fresh player per service lifetime (see PlaybackManager.exoPlayer).
+        val player = playbackManager.exoPlayer
+        session = MediaLibrarySession.Builder(this, player, callback)
             .setSessionActivity(pendingIntent)
             .build()
 
-        widgetUpdater.attach(playbackManager.exoPlayer)
+        widgetUpdater.attach(player)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -171,7 +173,8 @@ class MediaLibraryService : MediaLibraryService() {
         serviceScope.launch {
             val recents = runCatching { songRepository.getRecentlyPlayed().first() }.getOrDefault(emptyList())
             val index = recents.indexOfFirst { it.id == songId }
-            val player = playbackManager.exoPlayer
+            // The session's own player: never a released one, never a stray new one.
+            val player = session?.player ?: return@launch
             if (index >= 0) {
                 // On a cold start no controller has connected yet, so the session isn't tracked by
                 // Media3's notification manager; without this no foreground notification is posted.

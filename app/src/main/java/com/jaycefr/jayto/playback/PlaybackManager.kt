@@ -19,35 +19,44 @@ class PlaybackManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val songRepository: SongRepository
 ) {
+    /** Process-lifetime scope (this is a singleton); never cancelled, unlike the player. */
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    
-    val exoPlayer: ExoPlayer = ExoPlayer.Builder(context)
-        .setHandleAudioBecomingNoisy(true)
-        .build().apply {
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-            .build()
-        setAudioAttributes(audioAttributes, true)
-        // Keep songs appended by the windowed prefetch *after* the current song in shuffle mode.
-        setShuffleOrder(AppendingShuffleOrder())
-    }
+
+    /**
+     * The player lives as long as the playback service, not the process. The service releases it
+     * in onDestroy, but the process (and this singleton) often survives, e.g. after the user stops
+     * playback from the notification, and the next service start (widget Play, a media button)
+     * must get a working player instead of the released one. Main thread only.
+     */
+    private var player: ExoPlayer? = null
+
+    val exoPlayer: ExoPlayer
+        get() = player ?: createPlayer().also { player = it }
 
     private val _currentSong = MutableStateFlow<MediaItem?>(null)
     val currentSong: StateFlow<MediaItem?> = _currentSong.asStateFlow()
 
-    init {
-        exoPlayer.addListener(object : Player.Listener {
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                _currentSong.value = mediaItem
-                mediaItem?.mediaId?.toLongOrNull()?.let { id ->
-                    scope.launch {
-                        songRepository.incrementPlayCount(id)
+    private fun createPlayer(): ExoPlayer = ExoPlayer.Builder(context)
+        .setHandleAudioBecomingNoisy(true)
+        .build().apply {
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build()
+            setAudioAttributes(audioAttributes, true)
+            // Keep songs appended by the windowed prefetch *after* the current song in shuffle mode.
+            setShuffleOrder(AppendingShuffleOrder())
+            addListener(object : Player.Listener {
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    _currentSong.value = mediaItem
+                    mediaItem?.mediaId?.toLongOrNull()?.let { id ->
+                        scope.launch {
+                            songRepository.incrementPlayCount(id)
+                        }
                     }
                 }
-            }
-        })
-    }
+            })
+        }
 
     fun playSong(mediaItem: MediaItem) {
         if (!verifyFileExists(mediaItem)) return
@@ -77,8 +86,10 @@ class PlaybackManager @Inject constructor(
         } else true // Assume content URIs are handled by ExoPlayer's error listener
     }
 
+    /** Releases the current player; the next [exoPlayer] access builds a fresh one. */
     fun release() {
-        scope.cancel()
-        exoPlayer.release()
+        player?.release()
+        player = null
+        _currentSong.value = null
     }
 }
