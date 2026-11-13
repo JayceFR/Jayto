@@ -2,6 +2,8 @@ package com.jaycefr.jayto.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.jaycefr.jayto.domain.model.Song
 import com.jaycefr.jayto.domain.model.toMediaItem
 import com.jaycefr.jayto.domain.repository.PlaylistRepository
@@ -19,9 +21,6 @@ class SongsViewModel @Inject constructor(
     private val playlistRepository: PlaylistRepository,
     private val mediaControllerManager: MediaControllerManager
 ) : ViewModel() {
-
-    val songs = songRepository.getAllSongs()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentlyPlayed = songRepository.getRecentlyPlayed()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -46,33 +45,13 @@ class SongsViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
-    private val _displaySongs = MutableStateFlow<List<Song>>(emptyList())
-    val displaySongs = _displaySongs.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            val debouncedQuery = _searchQuery
-                .debounce { if (it.isBlank()) 0L else 250L }
-                .distinctUntilChanged()
-
-            combine(songs, debouncedQuery) { list, query ->
-                val q = query.trim()
-                if (q.isEmpty()) {
-                    list
-                } else {
-                    list.filter { song ->
-                        song.title.contains(q, ignoreCase = true) ||
-                        song.artist.contains(q, ignoreCase = true) ||
-                        song.album.contains(q, ignoreCase = true)
-                    }
-                }
-            }
-            .flowOn(kotlinx.coroutines.Dispatchers.Default)
-            .collect { filteredList ->
-                _displaySongs.value = filteredList
-            }
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val pagedSongs: Flow<PagingData<Song>> = _searchQuery
+        .debounce { if (it.isBlank()) 0L else 250L }
+        .flatMapLatest { query ->
+            songRepository.getPagedSongs(query)
         }
-    }
+        .cachedIn(viewModelScope)
 
     private val _selectedSongs = MutableStateFlow<Set<Long>>(emptySet())
     val selectedSongs = _selectedSongs.asStateFlow()
@@ -100,6 +79,13 @@ class SongsViewModel @Inject constructor(
                 initialValue = null
             )
 
+    init {
+        mediaControllerManager.onPrefetchNextBatch = { nextOffset ->
+            val query = searchQuery.value
+            songRepository.getSongsWindow(nextOffset, 10, query).map { it.toMediaItem() }
+        }
+    }
+
     fun scanSongs() {
         viewModelScope.launch {
             songRepository.scanLocalSongs()
@@ -110,16 +96,39 @@ class SongsViewModel @Inject constructor(
         mediaControllerManager.playMediaItem(song.toMediaItem())
     }
 
+    fun playSongInWindow(song: Song, index: Int) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val query = searchQuery.value
+            val windowOffset = (index - 5).coerceAtLeast(0)
+            val windowLimit = 16
+            val windowSongs = songRepository.getSongsWindow(windowOffset, windowLimit, query)
+            val playingIndex = (index - windowOffset).coerceIn(0, (windowSongs.size - 1).coerceAtLeast(0))
+            val nextOffset = windowOffset + windowSongs.size
+
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                mediaControllerManager.playWindowedSongs(
+                    mediaItems = windowSongs.map { it.toMediaItem() },
+                    initialIndex = playingIndex,
+                    nextOffset = nextOffset
+                )
+            }
+        }
+    }
+
     fun addSongToQueue(song: Song) {
         mediaControllerManager.addToQueue(song.toMediaItem())
     }
 
     fun addSelectedToQueue() {
-        val selectedIds = _selectedSongs.value
-        val selectedSongList = _displaySongs.value.filter { selectedIds.contains(it.id) }
-        if (selectedSongList.isNotEmpty()) {
-            mediaControllerManager.addToQueue(selectedSongList.map { it.toMediaItem() })
-            exitMultiSelectMode()
+        val selectedIds = _selectedSongs.value.toList()
+        if (selectedIds.isNotEmpty()) {
+            viewModelScope.launch {
+                val selectedSongList = selectedIds.mapNotNull { songRepository.getSongById(it) }
+                if (selectedSongList.isNotEmpty()) {
+                    mediaControllerManager.addToQueue(selectedSongList.map { it.toMediaItem() })
+                    exitMultiSelectMode()
+                }
+            }
         }
     }
 
@@ -167,16 +176,9 @@ class SongsViewModel @Inject constructor(
         _artSearchState.value = ArtSearchState.Idle
     }
 
-    fun moveSong(fromIndex: Int, toIndex: Int) {
-        val currentList = _displaySongs.value.toMutableList()
-        if (fromIndex !in currentList.indices || toIndex !in currentList.indices) return
-        
-        val song = currentList.removeAt(fromIndex)
-        currentList.add(toIndex, song)
-        _displaySongs.value = currentList
-
+    fun moveSong(songIds: List<Long>) {
         viewModelScope.launch {
-            songRepository.reorderSongs(currentList.map { it.id })
+            songRepository.reorderSongs(songIds)
         }
     }
 

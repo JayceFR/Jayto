@@ -9,6 +9,18 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE isHidden = 0 ORDER BY customOrder ASC")
     fun getAllSongs(): Flow<List<SongEntity>>
 
+    @Query("SELECT * FROM songs WHERE isHidden = 0 ORDER BY customOrder ASC")
+    fun getPagedSongs(): androidx.paging.PagingSource<Int, SongEntity>
+
+    @Query("SELECT * FROM songs WHERE isHidden = 0 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%') ORDER BY customOrder ASC")
+    fun searchPagedSongs(query: String): androidx.paging.PagingSource<Int, SongEntity>
+
+    @Query("SELECT * FROM songs WHERE isHidden = 0 ORDER BY customOrder ASC LIMIT :limit OFFSET :offset")
+    suspend fun getSongsWindow(offset: Int, limit: Int): List<SongEntity>
+
+    @Query("SELECT * FROM songs WHERE isHidden = 0 AND (title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%') ORDER BY customOrder ASC LIMIT :limit OFFSET :offset")
+    suspend fun searchSongsWindow(query: String, offset: Int, limit: Int): List<SongEntity>
+
     @Query("SELECT * FROM songs")
     suspend fun getAllSongsList(): List<SongEntity>
 

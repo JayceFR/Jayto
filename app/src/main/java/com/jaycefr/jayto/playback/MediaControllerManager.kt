@@ -24,6 +24,10 @@ class MediaControllerManager @Inject constructor(
     private var controller: MediaController? = null
     private var pendingUri: Uri? = null
 
+    var onPrefetchNextBatch: (suspend (nextOffset: Int) -> List<MediaItem>)? = null
+    private var currentWindowNextOffset = 0
+    private var isPrefetching = false
+
     private val _state = MutableStateFlow(PlaybackState())
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
@@ -46,7 +50,10 @@ class MediaControllerManager @Inject constructor(
         controller?.let { player ->
             updateState()
             player.addListener(object : Player.Listener {
-                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) { updateState() }
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) { 
+                    updateState() 
+                    checkPrefetch()
+                }
                 override fun onPlaybackStateChanged(state: Int) { updateState() }
                 override fun onIsPlayingChanged(playing: Boolean) { updateState() }
                 override fun onShuffleModeEnabledChanged(enabled: Boolean) { updateState() }
@@ -251,6 +258,34 @@ class MediaControllerManager @Inject constructor(
             it.setMediaItems(mediaItems, index, 0L)
             it.prepare()
             it.play()
+        }
+    }
+
+    fun playWindowedSongs(mediaItems: List<MediaItem>, initialIndex: Int, nextOffset: Int) {
+        currentWindowNextOffset = nextOffset
+        playMediaItems(mediaItems, initialIndex)
+    }
+
+    private fun checkPrefetch() {
+        controller?.let { player ->
+            val remaining = player.mediaItemCount - player.currentMediaItemIndex
+            if (remaining <= 3 && !isPrefetching && onPrefetchNextBatch != null) {
+                isPrefetching = true
+                scope.launch {
+                    try {
+                        val nextBatch = onPrefetchNextBatch?.invoke(currentWindowNextOffset) ?: emptyList()
+                        if (nextBatch.isNotEmpty()) {
+                            currentWindowNextOffset += nextBatch.size
+                            player.addMediaItems(nextBatch)
+                            updateState()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        isPrefetching = false
+                    }
+                }
+            }
         }
     }
 

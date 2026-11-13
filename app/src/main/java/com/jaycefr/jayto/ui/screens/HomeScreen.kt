@@ -31,6 +31,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import coil.compose.AsyncImage
 import com.jaycefr.jayto.domain.model.Song
 import com.jaycefr.jayto.domain.repository.Playlist
@@ -54,7 +56,7 @@ fun HomeScreen(
     onArtistClick: (String) -> Unit,
     onPlaylistClick: (Playlist) -> Unit
 ) {
-    val songs by songsViewModel.displaySongs.collectAsState()
+    val pagedSongs = songsViewModel.pagedSongs.collectAsLazyPagingItems()
     val searchQuery by songsViewModel.searchQuery.collectAsState()
     val recentlyPlayed by songsViewModel.recentlyPlayed.collectAsState()
     val selectedCategory by songsViewModel.selectedCategory.collectAsState()
@@ -79,8 +81,8 @@ fun HomeScreen(
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
         val fromIndex = from.index - headerOffset
         val toIndex = to.index - headerOffset
-        if (fromIndex in songs.indices && toIndex in songs.indices) {
-            songsViewModel.moveSong(fromIndex, toIndex)
+        val count = pagedSongs.itemCount
+        if (fromIndex in 0 until count && toIndex in 0 until count) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
@@ -253,9 +255,12 @@ fun HomeScreen(
                             }
                         }
 
-                        items(songs, key = { it.id }) { song ->
+                        items(
+                            count = pagedSongs.itemCount,
+                            key = pagedSongs.itemKey { it.id }
+                        ) { index ->
+                            val song = pagedSongs[index] ?: return@items
                             val isSelected = selectedSongs.contains(song.id)
-                            val index = songs.indexOf(song)
 
                             ReorderableItem(reorderableState, key = song.id) { isDragging ->
                                 val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp)
@@ -282,7 +287,7 @@ fun HomeScreen(
                                                 if (isMultiSelectMode) {
                                                     songsViewModel.toggleSelection(song.id)
                                                 } else {
-                                                    songsViewModel.playSongs(songs, index)
+                                                    songsViewModel.playSongInWindow(song, index)
                                                 }
                                             },
                                             onHide = { songsViewModel.hideSong(song) },

@@ -3,6 +3,10 @@ package com.jaycefr.jayto.data.repository
 import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import com.jaycefr.jayto.data.local.dao.SongDao
 import com.jaycefr.jayto.data.local.entities.SongEntity
 import com.jaycefr.jayto.data.local.entities.toDomain
@@ -23,6 +27,33 @@ class SongRepositoryImpl @Inject constructor(
 
     override fun getAllSongs(): Flow<List<Song>> =
         songDao.getAllSongs().map { entities -> entities.map { it.toDomain() } }
+
+    override fun getPagedSongs(query: String): Flow<PagingData<Song>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 30,
+                prefetchDistance = 10,
+                enablePlaceholders = false
+            )
+        ) {
+            if (query.isBlank()) {
+                songDao.getPagedSongs()
+            } else {
+                songDao.searchPagedSongs(query.trim())
+            }
+        }.flow.map { pagingData ->
+            pagingData.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun getSongsWindow(offset: Int, limit: Int, query: String): List<Song> {
+        val entities = if (query.isBlank()) {
+            songDao.getSongsWindow(offset, limit)
+        } else {
+            songDao.searchSongsWindow(query.trim(), offset, limit)
+        }
+        return entities.map { it.toDomain() }
+    }
 
     override fun getRecentlyPlayed(): Flow<List<Song>> =
         songDao.getRecentlyPlayed().map { entities -> entities.map { it.toDomain() } }
